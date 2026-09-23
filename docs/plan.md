@@ -76,7 +76,7 @@ Each milestone ends with a real radiologist using the build. The next milestone 
 | to Mon 5 Oct | Accounts, project list, reading screen with lock, reveal and revise. First deploy as soon as the server exists. | You + 1 ADIR radiologist, over the local network |
 | to Tue 13 Oct | Live room, QR join, 2x2, consent, debrief, hidden repeats, image window and access log | 3 radiologists |
 | to Wed 21 Oct | CT-phase exercise, export, purge, backups. **Feature freeze.** | Case-difficulty test with 3-5 colleagues |
-| to Tue 27 Oct | Fixes only. Offline laptop kit. Runbook. | Full 90-minute dry run, 4-6 readers |
+| to Tue 27 Oct | Fixes only. Offline laptop kit: a uv-managed Python (`uv python install 3.12`), `uv sync --offline` tested from a fresh clone with the network off. Runbook. | Full 90-minute dry run, 4-6 readers |
 | to Mon 2 Nov | No code | 10+ phones (iOS, Android, VPN on/off). Venue test. |
 
 Dry-run readers learn the trick, so they must not attend the workshop.

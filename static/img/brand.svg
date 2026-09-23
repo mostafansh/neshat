@@ -3,10 +3,9 @@
     Reading Room brand mark: a ring (the scan) with an arc (a contour drawn on it).
     Ported from mostafansh/interface@b6adb6d, templates/base.html.
 
-    The ring is currentColor, so it takes the text colour when the SVG is pasted inline.
-    The colour codes here are fallbacks for use as an <img> or as the favicon, where the
-    page's tokens cannot reach: they are the dark values of the soft and accent tokens.
-    When the SVG is inline, reading-room.css recolours both parts from the tokens
+    This file is the favicon (browser tab icon) only. Its colours are fixed: the dark
+    values of the soft and accent tokens. The header draws the same mark inline in
+    templates/base.html, where reading-room.css recolours it from the tokens
     (.brand-mark sets the ring through color, .brand-arc sets the arc stroke).
   -->
   <circle class="brand-ring" cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/>

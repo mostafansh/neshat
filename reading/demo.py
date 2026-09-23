@@ -35,7 +35,7 @@ def make_phantom(path: Path) -> None:
     noise = Image.effect_noise((WIDTH, HEIGHT), 18)
     image = Image.blend(image, noise, 0.12)
 
-    ImageDraw.Draw(image).text((24, 24), "SYNTHETIC - NOT A PATIENT", fill=200)
+    ImageDraw.Draw(image).text((24, 24), "SYNTHETIC - NOT A PATIENT", fill=200, font_size=48)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, format="PNG", optimize=True)

@@ -19,14 +19,13 @@ deliberately wrong), and decide whether to change their answer. The room's reads
 You need [uv](https://docs.astral.sh/uv/) (it installs Python packages into `.venv`).
 
 ```powershell
-uv sync                                                # install the packages
-uv run python manage.py migrate                        # create the database in data/
-uv run python manage.py runserver 0.0.0.0:8000         # start the site
+uv sync                                  # install the packages
+uv run python manage.py migrate          # create the database in data/
+uv run python manage.py runserver        # start the site for this computer only
 ```
 
-Open http://localhost:8000 on this computer. On a phone on the same network, open
-`http://<this computer's address>:8000`. If the phone cannot connect, Windows Firewall is
-blocking it: allow Python on this network when Windows asks.
+Open http://127.0.0.1:8000. To test on phones, start the site in venue mode instead; see
+[docs/runbook.md](docs/runbook.md).
 
 Run the tests:
 

@@ -3,6 +3,10 @@ data/
 media/
 *.sqlite3
 *.sqlite3-*
+*.db
+*.sqlite
+*.xlsx
+*.zip
 backups/
 exports/
 *.dcm
@@ -13,7 +17,10 @@ exports/
 *.jpg
 *.jpeg
 *.webp
-!static/**/*.png
+*.tif
+*.tiff
+*.bmp
+*.gif
 !static/**/*.svg
 !docs/**/*.png
 

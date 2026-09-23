@@ -64,7 +64,7 @@ A **theme** is a set of token values. A theme changes values only, never a compo
 ```html
 <body>
   <header class="site-header">
-    <a class="brand" href="/"><img class="brand-mark" src="…/img/brand.svg" alt=""> Name</a>
+    <a class="brand" href="/"><svg class="brand-mark" width="20" height="20" …>…</svg> Name</a>
     <nav class="site-nav" aria-label="Main">
       <a href="…" aria-current="page">Projects</a> <a href="…">Profile</a>
       <form method="post" action="…">{% csrf_token %}<button type="submit">Sign out</button></form>

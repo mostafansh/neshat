@@ -2,22 +2,24 @@
 
 The site runs in one of three modes, chosen with the NESHAT_MODE environment variable:
 
-- "dev" (default): your own computer. Debug pages on, any host name allowed.
-- "venue": the offline laptop at the workshop. Plain HTTP on a private Wi-Fi router.
+- "dev" (default): your own computer only. Debug pages on, reachable only from this computer.
+- "venue": the workshop laptop, and phone tests. Plain HTTP on a private Wi-Fi router.
 - "online": the real server in Iran, behind HTTPS.
 
-Study data (the database, case images, the secret key) lives in data/, which git ignores.
+Study data (the database, case images, the secret key, the error log) lives in data/, which
+git ignores. How to start each mode: docs/runbook.md.
 """
 
 import os
 from pathlib import Path
 
+from django.contrib.messages import constants as message_level
 from django.core.management.utils import get_random_secret_key
 from django.utils.csp import CSP
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("NESHAT_DATA_DIR", BASE_DIR / "data"))
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)  # 0o700: only our user (on Linux)
 
 SITE_MODE = os.environ.get("NESHAT_MODE", "dev")
 if SITE_MODE not in {"dev", "venue", "online"}:
@@ -41,11 +43,19 @@ def _secret_key() -> str:
 
 SECRET_KEY = _secret_key()
 
-if SITE_MODE == "online":
-    ALLOWED_HOSTS = [h for h in os.environ.get("NESHAT_HOSTS", "").split(",") if h]
-else:
-    # dev and venue run on a private network whose address changes (laptop IP, router IP).
+if SITE_MODE == "dev":
+    # Empty list + debug on = Django answers only localhost, so debug pages never reach
+    # another device. To test on a phone, use venue mode.
+    ALLOWED_HOSTS = []
+elif SITE_MODE == "venue":
+    # The laptop's address on the workshop router is not known in advance.
     ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = [h.strip() for h in os.environ.get("NESHAT_HOSTS", "").split(",") if h.strip()]
+    if not ALLOWED_HOSTS:
+        raise RuntimeError("Online mode needs NESHAT_HOSTS, for example NESHAT_HOSTS=study.example.ir")
+
+AUTH_USER_MODEL = "reading.User"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -53,7 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "whitenoise.runserver_nostatic",
+    "whitenoise.runserver_nostatic",  # the dev server serves files the same way venue does
     "django.contrib.staticfiles",
     "reading",
 ]
@@ -69,6 +79,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
 ]
+if SITE_MODE == "venue":
+    # On the workshop Wi-Fi (plain HTTP) admin pages answer only the laptop itself.
+    MIDDLEWARE.append("reading.middleware.admin_only_from_this_computer")
 
 ROOT_URLCONF = "config.urls"
 
@@ -90,15 +103,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# One SQLite file. WAL mode lets readers and one writer work at the same time.
+# One SQLite file. WAL lets pages read while one save writes. synchronous=FULL flushes every
+# save to disk, so a stored first read survives a power cut. busy_timeout (ms) and IMMEDIATE
+# make two phones saving at the same moment wait their turn instead of failing.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": DATA_DIR / "db.sqlite3",
         "OPTIONS": {
-            "init_command": (
-                "PRAGMA journal_mode=WAL;PRAGMA synchronous=NORMAL;PRAGMA busy_timeout=5000"
-            ),
+            "init_command": "PRAGMA journal_mode=WAL;PRAGMA synchronous=FULL;PRAGMA busy_timeout=5000",
             "transaction_mode": "IMMEDIATE",
         },
     }
@@ -119,18 +132,44 @@ TIME_ZONE = "Asia/Tehran"
 USE_I18N = True
 USE_TZ = True
 
-# Style and script files. WhiteNoise serves them in every mode, with no internet needed.
+# Style and script files, served by WhiteNoise straight from static/ in every mode.
+# No collectstatic step is needed, and no internet.
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"  # filled by `manage.py collectstatic` for venue/online
-STATIC_ROOT.mkdir(exist_ok=True)
-WHITENOISE_USE_FINDERS = DEBUG
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT.mkdir(exist_ok=True)  # an empty folder keeps WhiteNoise from warning at start
+WHITENOISE_USE_FINDERS = True
 
 # Case images are NOT public files. They are served only through views that check access.
 CASE_MEDIA_ROOT = DATA_DIR / "media"
 
 # Message colours match the notice styles in reading-room.css.
-MESSAGE_TAGS = {10: "info", 20: "info", 25: "ok", 30: "warn", 40: "stop"}
+MESSAGE_TAGS = {
+    message_level.DEBUG: "info",
+    message_level.INFO: "info",
+    message_level.SUCCESS: "ok",
+    message_level.WARNING: "warn",
+    message_level.ERROR: "stop",
+}
+
+# Server errors and refused requests are written to data/errors.log in every mode.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "errors_file": {
+            "class": "logging.FileHandler",
+            "filename": DATA_DIR / "errors.log",
+            "level": "ERROR",
+            "encoding": "utf-8",
+            "delay": True,
+        },
+    },
+    "loggers": {
+        "django.request": {"handlers": ["errors_file"]},
+        "django.security": {"handlers": ["errors_file"]},
+    },
+}
 
 # Security headers. Everything the page loads must come from this site (offline-first rule).
 SECURE_CSP = {
@@ -151,10 +190,15 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
 if SITE_MODE == "online":
-    # The online server sits behind HTTPS. Browsers then send cookies only over HTTPS.
+    # The online server sits behind an HTTPS proxy (nginx or the host's panel). Waitress drops
+    # the proxy's X-Forwarded-Proto header unless told to trust it, which causes an endless
+    # redirect loop. Start it exactly as in docs/runbook.md:
+    #   waitress-serve --listen=127.0.0.1:8000 --trusted-proxy=127.0.0.1
+    #     --trusted-proxy-headers="x-forwarded-proto x-forwarded-for" config.wsgi:application
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
-    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
+    # Start short. Raise it only after one HTTPS certificate renewal has worked on the server.
+    SECURE_HSTS_SECONDS = int(os.environ.get("NESHAT_HSTS_SECONDS", 60 * 60))

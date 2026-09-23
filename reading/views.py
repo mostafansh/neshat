@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.http import FileResponse
+from django.http import HttpResponse
 from django.shortcuts import render
 
 from .demo import make_phantom
@@ -15,10 +15,15 @@ def demo_image(request):
     Case images are never public static files. They come only through views like this one,
     so each request can be checked. Real cases (next milestone) will check that the image
     belongs to this reader's current, previous or next case.
+
+    Only the pixels are sent: no file name, no file date, nothing that could hint at the
+    source or the answer.
     """
-    path = settings.CASE_MEDIA_ROOT / "demo" / "phantom.png"
+    path = settings.CASE_MEDIA_ROOT / "demo" / "phantom-v2.png"
     if not path.exists():
         make_phantom(path)
-    response = FileResponse(path.open("rb"), content_type="image/png")
-    response["Cache-Control"] = "private, max-age=300"
-    return response
+    return HttpResponse(
+        path.read_bytes(),
+        content_type="image/png",
+        headers={"Cache-Control": "private, max-age=300"},
+    )

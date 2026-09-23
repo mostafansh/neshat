@@ -53,6 +53,9 @@ context before status. Keep the technical detail; restructure it, do not drop it
 6. AI overlays use one neutral colour, identical for correct and planted suggestions. Shown AI
    confidence must not reveal which suggestions are planted.
 7. The app runs on a laptop with no internet: no CDN, no Google Fonts, no external calls.
+   The venue is plain HTTP on a LAN address, which browsers do not treat as secure: no
+   crypto.randomUUID, crypto.subtle, clipboard, wake lock or service workers. Test the
+   reading screen on a phone through the LAN address, not only on localhost.
 
 ## Data rules
 
@@ -61,6 +64,8 @@ context before status. Keep the technical detail; restructure it, do not drop it
 - No hospital data in this repo. No PACS fetches or hospital report queries from this repo.
   Never send hospital images through Claude: that sends them abroad.
 - Never commit data/, images, DICOM, databases, exports or literature/*.pdf.
+- Keep downloaded source datasets outside this repo folder: DICOM files often have no
+  extension, so .gitignore cannot catch them.
 
 ## How we work
 
@@ -80,10 +85,12 @@ Python 3.12, Django 6.1, SQLite (WAL), WhiteNoise, Waitress, Pillow, uv. The rea
 will be one plain JavaScript module with no build step. Online host: a server in Iran the owner
 buys (not yet). Offline: laptop plus a travel Wi-Fi router.
 
-- `uv sync` · `uv run python manage.py migrate` · `uv run python manage.py runserver 0.0.0.0:8000`
+- `uv sync` · `uv run python manage.py migrate` · `uv run python manage.py runserver` (this
+  computer only, dev mode).
+- Phones: venue mode with Waitress on port 8080. Exact commands in `docs/runbook.md`.
 - Tests: `uv run python manage.py test` (Django's own test runner; no pytest).
 - Mode: environment variable `NESHAT_MODE` = `dev` (default) | `venue` | `online`. See
-  `config/settings.py`.
+  `config/settings.py`. Dev mode never answers other devices; that is deliberate.
 
 ## Where things live
 
