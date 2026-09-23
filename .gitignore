@@ -1,0 +1,45 @@
+# Study data: never in git
+data/
+media/
+*.sqlite3
+*.sqlite3-*
+backups/
+exports/
+*.dcm
+*.nii
+*.nii.gz
+*.nrrd
+*.png
+*.jpg
+*.jpeg
+*.webp
+!static/**/*.png
+!static/**/*.svg
+!docs/**/*.png
+
+# Third-party copyrighted papers: keep the reading list, not the PDFs
+literature/*.pdf
+
+# Python and tooling
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+wheelhouse/
+staticfiles/
+
+# Secrets
+.env
+.env.*
+*.key
+secret_key.txt
+
+# OS and editors
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+.claude/settings.local.json
