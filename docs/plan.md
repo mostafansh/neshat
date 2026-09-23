@@ -22,16 +22,18 @@ exercises, attendees can sign up to join the pilot.
 | Reading screen | One plain JavaScript module (no build step) that talks to Django through a few JSON endpoints: get case, save first read, get AI suggestion, save final read, send events. |
 | Images | The server sends ready-to-display 8-bit images, with 2-3 preset windows made on the server. No DICOM and no raw data reach the browser. Marks are stored in image-pixel coordinates with our own IDs, so a later switch to Cornerstone3D does not lose data. |
 | CT phase task | 2-3 pre-windowed key images per case, no scrolling viewer (as the deck promises). |
-| Hosting | Inside Iran. No Cloudflare and no foreign proxy (sanctions, shutdowns, data abroad). Provider still open, see below. |
+| Hosting | Inside Iran, on a server the owner buys. No Cloudflare and no foreign proxy (sanctions, shutdowns, data abroad). Until the server exists, everything runs locally. Server resources are discussed separately. |
+| Study setup | The owner describes each study in chat; Claude writes it as a study file plus a case list and loads it with one command. The friendly study builder comes after the congress. |
+| GitHub | A new private repo (name open). The existing private repo `mostafansh/Autoclave` (July 2026 vision for a DICOM cleaning engine) stays untouched. |
 | Live room | Organizer-paced: everyone reads the same case at the same time. Same AI suggestion for every reader on a case. Results stay hidden until the organizer presses "Show". |
 
 ## Open decisions
 
-1. How studies get into the site before the congress (Claude loads them / built-in admin forms / a friendly builder).
-2. Hosting provider: an ADIR/TUMS server, Liara, or another Iranian host.
-3. GitHub home: the existing private repo `mostafansh/Autoclave`, or a new one.
-4. Product name: is it "Autoclave"?
-5. A written rule for "Unsure" answers in the 2x2 table.
+1. Repository name on GitHub.
+2. Product name (placeholder: [Product name]).
+3. The server: which provider, and when it is ready. The first online deploy should happen by
+   mid-October at the latest, so the 3-radiologist checkpoint can run online.
+4. A written rule for "Unsure" answers in the 2x2 table.
 
 ## Must work by feature freeze (Wed 21 Oct)
 
@@ -71,7 +73,7 @@ Each milestone ends with a real radiologist using the build. The next milestone 
 | Dates | Build | Radiologist checkpoint |
 |---|---|---|
 | to Sun 27 Sep | Django skeleton, Reading Room style, one image on a phone | You |
-| to Mon 5 Oct | Accounts, project list, reading screen with lock, reveal and revise. **First deploy to the Iranian host.** | You + 1 ADIR radiologist, online |
+| to Mon 5 Oct | Accounts, project list, reading screen with lock, reveal and revise. First deploy as soon as the server exists. | You + 1 ADIR radiologist, over the local network |
 | to Tue 13 Oct | Live room, QR join, 2x2, consent, debrief, hidden repeats, image window and access log | 3 radiologists |
 | to Wed 21 Oct | CT-phase exercise, export, purge, backups. **Feature freeze.** | Case-difficulty test with 3-5 colleagues |
 | to Tue 27 Oct | Fixes only. Offline laptop kit. Runbook. | Full 90-minute dry run, 4-6 readers |
@@ -82,7 +84,7 @@ Dry-run readers learn the trick, so they must not attend the workshop.
 ## Owner tasks (not code)
 
 - Recruit an MSK and an abdominal radiologist to approve correct answers and planted AI errors.
-- Ask ADIR/TUMS IT about a server, if that is the hosting choice.
+- Buy the server inside Iran and ask the provider how HTTPS certificates are issued and renewed.
 - Buy a travel router. Confirm the workshop slot and whether the venue allows it.
 - Write the consent and debrief wording (teaching use, planted suggestions, purge).
 
