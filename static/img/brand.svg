@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="brand-mark" viewBox="0 0 16 16" width="16" height="16" fill="none" color="#7f8d9c" aria-hidden="true">
+  <!--
+    Reading Room brand mark: a ring (the scan) with an arc (a contour drawn on it).
+    Ported from mostafansh/interface@b6adb6d, templates/base.html.
+
+    The ring is currentColor, so it takes the text colour when the SVG is pasted inline.
+    The colour codes here are fallbacks for use as an <img> or as the favicon, where the
+    page's tokens cannot reach: they are the dark values of the soft and accent tokens.
+    When the SVG is inline, reading-room.css recolours both parts from the tokens
+    (.brand-mark sets the ring through color, .brand-arc sets the arc stroke).
+  -->
+  <circle class="brand-ring" cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/>
+  <path class="brand-arc" d="M4.2 9.6c1.5-3.4 6.1-3.4 7.6 0" stroke="#4aa89b" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

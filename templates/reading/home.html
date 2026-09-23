@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Bring your expertise.</h1>
+<p class="lede">We bring the data and the idea. You take part in research with very little to
+learn outside radiology.</p>
+
+<div class="notice notice-info">
+  <p><strong>Week 0.</strong> This page proves that the style, the server and your phone work
+  together. Reading cases comes next.</p>
+</div>
+
+<figure class="stack">
+  <div class="frame">
+    <img src="{% url 'demo_image' %}" alt="Synthetic test radiograph, drawn by code. Not a patient.">
+  </div>
+  <figcaption class="muted">A synthetic test image, drawn by code. Not a patient.</figcaption>
+</figure>
+{% endblock %}

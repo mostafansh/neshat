@@ -1,0 +1,823 @@
+/* ==========================================================================
+   Reading Room: the one stylesheet of this site.
+
+   The written standard is docs/style.md. Ported from the old project's
+   base.html (mostafansh/interface@b6adb6d), then changed for medical images,
+   a small JavaScript reading screen, phones, Persian (RTL) text and three
+   themes.
+
+   Four rules for anyone who edits this file:
+   1. Every colour is a token (a custom property) in the TOKENS section.
+      A component rule uses var(--token). It never contains a colour code.
+   2. A theme changes token values only. It never restyles a component.
+   3. Use logical properties: margin-inline-start, padding-block,
+      border-inline-start, inset-inline-start, text-align: start. They flip
+      by themselves inside dir="rtl" (Persian) blocks. Never write left/right.
+   4. Nothing external: no @import, no font or image from another server.
+      The site must also run offline on a laptop.
+   ========================================================================== */
+
+
+/* ---- Font slot (empty on purpose) -----------------------------------------
+   No web font is loaded yet. Persian text uses the system fonts in --font-fa.
+   To self-host Vazirmatn later: copy Vazirmatn[wght].woff2 into
+   static/fonts/, then move this @font-face block out of the comment.
+   The file stays on our own server. Never link a CDN or Google Fonts.
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("../fonts/Vazirmatn[wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F;
+}
+---------------------------------------------------------------------------- */
+
+
+/* ==========================================================================
+   TOKENS
+   ========================================================================== */
+
+/* Colour, dark values. Dark is the default: radiologists read in dark rooms.
+   The same block also applies to .frame, so the image frame stays dark in
+   every theme (a light surround changes how the greys of an image look).
+   Contrast on --ground / --surface: ink 15.4 / 14.0, soft 5.8 / 5.3,
+   accent 7.0 / 6.3, stop 5.7 / 5.2, ai 7.0 / 6.4. */
+:root,
+.frame {
+  color-scheme: dark;
+
+  --ground:      #070a0d;  /* the page */
+  --surface:     #101720;  /* header, footer, cards, tables */
+  --raised:      #18212b;  /* inputs, notices, answer choices */
+  --ink:         #dbe4ec;  /* main text */
+  --soft:        #7f8d9c;  /* secondary text */
+  --rule:        #212b36;  /* thin decorative lines: table rows, card edges */
+  --line-strong: #62707f;  /* edges people must see: inputs, buttons (3.2:1 or more) */
+  --accent:      #4aa89b;  /* the one accent: links, primary button, focus ring */
+  --accent-ink:  #04120f;  /* text on the accent */
+  --ok:          #62ab83;  /* state: done, saved */
+  --warn:        #cba43a;  /* state: needs attention, not measured yet */
+  --stop:        #d8685d;  /* state: refused, error */
+  --you:         var(--accent);  /* the reader's own marks and answers */
+  --ai:          #a98bdb;  /* AI suggestions: one neutral violet, correct or planted */
+  --viewport:    #000;     /* behind medical images, in every theme */
+}
+
+/* Everything that is not a colour. */
+:root {
+  --base-size: 100%;     /* root font size; 100% = the device setting, usually 16px */
+  --tap:       2.75rem;  /* 44px: the least height of anything a finger taps */
+  --gutter:    1rem;     /* 16px side margin on a phone */
+  --page-max:  60rem;    /* 960px: the widest content column */
+  --radius:    6px;      /* the one corner radius (images get none) */
+  --tracking:  .08em;    /* letter spacing of small uppercase labels; 0 in Persian */
+
+  --font-text:    "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+                  Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
+                  Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono:    "Cascadia Mono", Consolas, ui-monospace, "SF Mono", Menlo,
+                  "Roboto Mono", "Noto Sans Mono", monospace;
+  --font-fa:      "Vazirmatn", Tahoma, "Segoe UI", "Noto Sans Arabic", "Geeza Pro",
+                  sans-serif;
+}
+
+
+/* ==========================================================================
+   THEMES: token values only. Set data-theme on <html>, or leave it off.
+   ========================================================================== */
+
+/* Light: for a desk in daylight. It follows the device setting unless
+   <html> says data-theme="dark". The two light blocks must stay identical.
+   Contrast on --ground / --surface: ink 15.5 / 17.6, soft 5.3 / 6.0,
+   accent 5.6 / 6.3, warn 5.0 / 5.6, ai 5.6 / 6.4. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --ground:      #eef1f3;
+    --surface:     #ffffff;
+    --raised:      #f4f6f7;
+    --ink:         #121a20;
+    --soft:        #566571;
+    --rule:        #ccd4d9;
+    --line-strong: #758390;
+    --accent:      #1f6b60;
+    --accent-ink:  #ffffff;
+    --ok:          #2f6b46;
+    --warn:        #86611a;
+    --stop:        #99332b;
+    --ai:          #6b4ea8;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ground:      #eef1f3;
+  --surface:     #ffffff;
+  --raised:      #f4f6f7;
+  --ink:         #121a20;
+  --soft:        #566571;
+  --rule:        #ccd4d9;
+  --line-strong: #758390;
+  --accent:      #1f6b60;
+  --accent-ink:  #ffffff;
+  --ok:          #2f6b46;
+  --warn:        #86611a;
+  --stop:        #99332b;
+  --ai:          #6b4ea8;
+}
+
+/* Projector: for the congress hall. A projector washes out dark greys, so
+   this theme is light, high contrast (all text 7.5:1 or more) and 25% larger.
+   It must stay last and set every colour, so no light value leaks into it. */
+:root[data-theme="projector"] {
+  color-scheme: light;
+  --base-size:   125%;
+  --ground:      #ffffff;
+  --surface:     #eef1f3;
+  --raised:      #f6f8f9;
+  --ink:         #05080a;
+  --soft:        #2e3a44;
+  --rule:        #77838d;
+  --line-strong: #3e4b56;
+  --accent:      #0c564d;
+  --accent-ink:  #ffffff;
+  --ok:          #17532e;
+  --warn:        #5e4100;
+  --stop:        #8a1d14;
+  --ai:          #51308f;
+}
+
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+/* A class that sets display must never unhide an element the page hid. */
+[hidden] { display: none !important; }
+
+html {
+  font-size: var(--base-size);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+  color: var(--ink);
+  accent-color: var(--accent);
+  font-family: var(--font-text);
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;  /* a long word or code never pushes the page sideways */
+}
+
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote, pre { margin: 0; }
+img, video, canvas { max-width: 100%; height: auto; }
+svg { max-width: 100%; }
+input, select, textarea, button { font: inherit; color: inherit; }
+code, kbd, samp, pre { font-family: var(--font-mono); font-size: .9em; }
+pre { overflow-x: auto; }
+hr { margin: 0; border: 0; border-block-start: 1px solid var(--rule); }
+
+a {
+  color: var(--accent);
+  text-underline-offset: .15em;
+}
+
+/* One focus ring for every control, in every theme. */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+
+/* ==========================================================================
+   PAGE SHELL: header, nav, main, footer
+   ========================================================================== */
+
+/* Full-width bands whose content lines up in one column: a 16px gutter on a
+   phone, a centred 960px column on a wide screen. */
+.site-header,
+.site-main,
+.site-footer {
+  padding-inline: max(var(--gutter), calc((100% - var(--page-max)) / 2));
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;  /* on a narrow phone the nav moves to a second line */
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 1rem;
+  padding-block: .25rem;
+  background: var(--surface);
+  border-block-end: 1px solid var(--rule);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: var(--tap);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: block;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--soft);  /* the ring, when the SVG is pasted inline */
+}
+.brand-arc { stroke: var(--accent); }  /* the arc, when the SVG is pasted inline */
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: .25rem;
+  margin-inline: -.625rem;  /* link text lines up with the gutter */
+}
+.site-nav form { display: flex; margin: 0; }
+
+.site-nav a,
+.site-nav button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding-block: 0;
+  padding-inline: .625rem;
+  border: 0;
+  border-block: 2px solid transparent;
+  background: none;
+  color: var(--soft);
+  text-decoration: none;
+  cursor: pointer;
+}
+.site-nav [aria-current="page"] {
+  color: var(--ink);
+  border-block-end-color: var(--accent);
+}
+
+.site-main {
+  flex: 1 0 auto;
+  padding-block: 1.5rem 3rem;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1.25rem;
+  padding-block: .25rem;
+  background: var(--surface);
+  border-block-start: 1px solid var(--rule);
+  color: var(--soft);
+  font-size: .875rem;
+}
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+
+/* ==========================================================================
+   TYPE AND RHYTHM
+   ========================================================================== */
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+/* Headings are light, not bold. The data is what should be loud. */
+h1 { font-size: 1.6rem; font-weight: 300; }
+h2 { font-size: 1.25rem; font-weight: 400; }
+h3 { font-size: 1.0625rem; font-weight: 600; font-family: var(--font-text); }
+
+p, .lede { max-inline-size: 65ch; }  /* a comfortable line length */
+.lede { font-size: 1.125rem; }
+.muted { color: var(--soft); }
+small { font-size: .875rem; }
+
+/* Figures that are compared down a column: digits line up. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Vertical spacing. Inside .site-main and .stack, each child after the first
+   gets space above it. This is the one place block margins are used.
+   A heading gets more space above it and less below, so it sits with the
+   text it introduces. */
+.site-main > * + * { margin-block-start: 1.5rem; }
+.stack > * + * { margin-block-start: 1rem; }
+:is(.site-main, .stack) > :is(h1, h2, h3) + * { margin-block-start: .5rem; }
+:is(.site-main, .stack) > :is(h2, h3):not(:first-child) { margin-block-start: 2rem; }
+
+
+/* ==========================================================================
+   NOTICES
+   A box with a coloured start edge. Always add one variant, and let the
+   words say the state too: colour is never the only sign.
+   ========================================================================== */
+
+.notice {
+  max-inline-size: 65ch;
+  padding-block: .75rem;
+  padding-inline: 1rem;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-inline-start: 3px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+.notice > * + * { margin-block-start: .5rem; }
+.notice-info { border-inline-start-color: var(--accent); }
+.notice-ok   { border-inline-start-color: var(--ok); }
+.notice-warn { border-inline-start-color: var(--warn); }
+.notice-stop { border-inline-start-color: var(--stop); }
+
+
+/* ==========================================================================
+   BUTTONS
+   .btn alone is the secondary style. .btn-primary is the one filled style:
+   use it once per screen, for the action the screen expects.
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: var(--tap);
+  padding-block: .5rem;
+  padding-inline: 1.125rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;  /* no double-tap zoom delay */
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-quiet {
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* A row of buttons that wraps on a phone. */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+}
+
+/* Hover only on devices with a mouse; a phone has no hover. */
+@media (hover: hover) {
+  a:hover { text-decoration-thickness: 2px; }
+  .site-nav a:hover,
+  .site-nav button:hover { color: var(--ink); }
+  .btn:not(:disabled, [aria-disabled="true"]):hover { border-color: var(--accent); }
+  .btn-primary:not(:disabled, [aria-disabled="true"]):hover { border-color: var(--ink); }
+  .btn-quiet:not(:disabled, [aria-disabled="true"]):hover {
+    border-color: transparent;
+    text-decoration: underline;
+  }
+}
+
+
+/* ==========================================================================
+   TABLES
+   Always <div class="table-wrap"><table class="table">. The wrapper scrolls
+   sideways; the page never does.
+   ========================================================================== */
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
+}
+
+.table th,
+.table td {
+  padding-block: .625rem;
+  padding-inline: .75rem;
+  text-align: start;
+  vertical-align: top;
+  border-block-end: 1px solid var(--rule);
+}
+
+.table th {
+  color: var(--soft);
+  font-family: var(--font-text);  /* a .num header keeps the text font */
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child > * { border-block-end: 0; }
+.table .num { text-align: end; }
+
+
+/* ==========================================================================
+   PILLS AND THE AI BADGE
+   ========================================================================== */
+
+/* A bordered state word. Always carries text. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding-block: .125rem;
+  padding-inline: .5rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  color: var(--soft);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pill-ok   { color: var(--ok); }
+.pill-warn { color: var(--warn); }
+.pill-stop { color: var(--stop); }
+
+/* Marks an AI suggestion. The dashed edge matches dashed AI marks on the
+   image. There is exactly one AI style: a correct and a planted suggestion
+   must look the same. Never add a variant. */
+.badge-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  padding-block: .125rem;
+  padding-inline: .5rem;
+  border: 1px dashed currentColor;
+  border-radius: var(--radius);
+  color: var(--ai);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+
+/* ==========================================================================
+   STATS
+   A strip of figures, each with a name under it.
+   ========================================================================== */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 1.25rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  min-width: 0;
+}
+
+.stat-figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.stat-label {
+  color: var(--soft);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
+}
+
+/* A figure that is not wired up yet says so, so a zero is never read as
+   "nothing waiting" when it means "not measured yet". */
+.stat-note {
+  color: var(--warn);
+  font-size: .8125rem;
+}
+
+
+/* ==========================================================================
+   CARDS (the project list)
+   <ul class="card-list"><li class="card">...</li></ul>
+   ========================================================================== */
+
+.card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .625rem;
+  min-width: 0;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+
+/* ==========================================================================
+   FORMS
+   A form is usually <form class="stack">. Django wraps each field in a <div>
+   and adds .helptext, .errorlist and aria-invalid; those are styled here.
+   ========================================================================== */
+
+fieldset {
+  min-inline-size: 0;  /* stops a fieldset from widening the page */
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+label,
+legend { font-weight: 600; }
+
+label {
+  display: block;
+  margin-block-end: .375rem;
+}
+
+legend {
+  padding: 0;
+  margin-block-end: .5rem;
+}
+
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"],
+       [type="file"], [type="hidden"], [type="submit"], [type="button"],
+       [type="reset"], [type="image"]),
+       select,
+       textarea) {
+  display: block;
+  width: 100%;
+  max-inline-size: 36rem;
+  min-height: var(--tap);
+  padding-block: .5rem;
+  padding-inline: .75rem;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-size: max(1rem, 16px);  /* 16px or more, so iPhones do not zoom in */
+  line-height: 1.4;
+}
+
+textarea {
+  min-height: 7.5rem;
+  resize: vertical;
+}
+
+input[type="file"] { max-inline-size: 100%; }
+
+::placeholder {
+  color: var(--soft);
+  opacity: 1;
+}
+
+:where(input, select, textarea):disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+:where(input, select, textarea)[aria-invalid="true"] { border-color: var(--stop); }
+
+.helptext {
+  display: block;
+  margin-block-start: .375rem;
+  color: var(--soft);
+  font-size: .875rem;
+}
+
+.errorlist {
+  margin: 0;
+  margin-block-start: .375rem;
+  padding: 0;
+  list-style: none;
+  color: var(--stop);
+  font-size: .875rem;
+  font-weight: 600;
+}
+
+/* Radio buttons and checkboxes as large tap targets.
+   <fieldset class="choice-list"><legend>...</legend>
+     <label class="choice"><input type="radio" name="x" value="1"> Text</label>
+   </fieldset>
+   The native control stays visible, so "chosen" is never shown by colour alone. */
+.choice-list {
+  display: grid;
+  gap: .5rem;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-height: var(--tap);
+  margin: 0;
+  padding-block: .625rem;
+  padding-inline: .875rem;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.choice input {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+}
+
+/* A 2px accent edge on the chosen answer (an inset line, not a shadow). */
+.choice:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.choice:has(input:disabled) {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* A short scale in one row, such as confidence 1 to 5:
+   <fieldset class="choice-list choice-row">. */
+.choice-row { grid-template-columns: repeat(auto-fit, minmax(3.25rem, 1fr)); }
+.choice-row .choice {
+  flex-direction: column;
+  justify-content: center;
+  gap: .25rem;
+  padding-inline: .25rem;
+  text-align: center;
+}
+
+
+/* ==========================================================================
+   IMAGE FRAME
+   Every medical image sits in .frame. The frame is black and has square
+   corners. The whole image shows, scaled to fit; CSS never crops it. Only
+   the reader's own zoom and pan (done by the reading screen) hide any part.
+   The frame always uses the dark tokens (see TOKENS), so marks drawn in it
+   use the same --you and --ai values in every theme.
+
+   Layers (the image, a canvas or an SVG for marks) are direct children and
+   fill the frame exactly. An SVG with viewBox="0 0 W H", where W x H is the
+   image's size in pixels, lines up with the image by itself: both fit the
+   same way. So marks can be stored in image-pixel coordinates.
+   The reading screen may add touch-action: none while it handles pan and
+   pinch, so a drag moves the image instead of the page.
+   ========================================================================== */
+
+.frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 75vh;
+  max-height: 75dvh;
+  overflow: hidden;  /* clips only what the reader zooms past */
+  background: var(--viewport);
+  border-radius: 0;
+  color: var(--ink);
+  accent-color: var(--accent);
+}
+
+.frame > img,
+.frame > canvas,
+.frame > svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.frame > img,
+.frame > canvas {
+  object-fit: contain;
+  -webkit-touch-callout: none;  /* a long press to mark must not open "Save image" */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The AI label inside the frame sits in the top start corner. */
+.frame > .badge-ai {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: .5rem;
+  inset-inline-start: .5rem;
+  background: var(--viewport);
+}
+
+
+/* ==========================================================================
+   PERSIAN (RTL)
+   Wrap Persian text in <div lang="fa" dir="rtl"> (or add class="fa").
+   lang picks the font; dir flips the layout.
+   ========================================================================== */
+
+:is(.fa, [lang|="fa"]) {
+  --font-text: var(--font-fa);
+  --font-display: var(--font-fa);
+  --tracking: 0;  /* letter spacing breaks joined Persian letters */
+  font-family: var(--font-fa);
+  line-height: 1.8;
+}
+
+
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
+
+/* Hidden on screen, still read aloud by a screen reader. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The style has no animation. If the device asks for reduced motion, any
+   motion added later (for example by the reading screen) stops too. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

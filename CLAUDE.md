@@ -74,7 +74,19 @@ context before status. Keep the technical detail; restructure it, do not drop it
 - Ask before any push, and before adding any dependency.
 - Do not add hooks, graphify or other tooling config unless the owner asks.
 
-## Stack
+## Stack and commands
 
-Python 3.12, Django, SQLite, a small custom image viewer in plain JavaScript, uv for packages.
-Online host: an Iranian provider (to be chosen). Offline: laptop plus a travel Wi-Fi router.
+Python 3.12, Django 6.1, SQLite (WAL), WhiteNoise, Waitress, Pillow, uv. The reading screen
+will be one plain JavaScript module with no build step. Online host: a server in Iran the owner
+buys (not yet). Offline: laptop plus a travel Wi-Fi router.
+
+- `uv sync` · `uv run python manage.py migrate` · `uv run python manage.py runserver 0.0.0.0:8000`
+- Tests: `uv run python manage.py test` (Django's own test runner; no pytest).
+- Mode: environment variable `NESHAT_MODE` = `dev` (default) | `venue` | `online`. See
+  `config/settings.py`.
+
+## Where things live
+
+`config/` settings and URLs · `reading/` the one Django app · `templates/` pages ·
+`static/css/reading-room.css` the only stylesheet (rules in `docs/style.md`) ·
+`data/` database, case images, secret key (git-ignored) · `docs/plan.md` the build plan.
