@@ -81,6 +81,12 @@ Each milestone ends with a real radiologist using the build. The next milestone 
 
 Dry-run readers learn the trick, so they must not attend the workshop.
 
+## Checkpoint log
+
+| Date | Milestone | Who, device | Result |
+|---|---|---|---|
+| 2026-09-24 | M0 | Owner, Samsung S21, Chrome, hospital Wi-Fi | All 9 checks passed. Long-press on the image offered Download, Copy, Share and Google Lens (which uploads to Google). Decision: the reading screen draws images on a canvas, never as a plain image, and blocks the long-press menu. |
+
 ## Owner tasks (not code)
 
 - Recruit an MSK and an abdominal radiologist to approve correct answers and planted AI errors.
