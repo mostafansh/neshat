@@ -116,11 +116,20 @@ function postJson(url, body) {
   return request(url, options, readJson);
 }
 
-// kind: '' (plain), 'warn' (connection trouble) or 'stop' (refused).
+// kind: '' (plain), 'warn' (connection trouble) or 'stop' (refused). A new warning or
+// refusal is brought into view, once: the reader must see it, but may scroll away again.
 function showStatus(text, kind = '') {
+  const isNew = kind && kind !== el.status.dataset.kind;
   el.status.textContent = text;
   el.status.className = kind ? `notice notice-${kind}` : 'muted';
   el.status.dataset.kind = kind;
+  if (isNew) reveal(el.status);
+}
+
+// Scrolls just enough to show an element that is off the screen.
+function reveal(element) {
+  const box = element.getBoundingClientRect();
+  if (box.top < 0 || box.bottom > window.innerHeight) element.scrollIntoView({ block: 'nearest' });
 }
 
 
@@ -218,13 +227,14 @@ function clampAxis(offset, room, size) {
   return Math.min(0, Math.max(room - size, offset));
 }
 
-// Zooms by `factor` and keeps the image point under (px, py) in the same place. The limit
-// is 8 times the fit size, or more for a large image: a full-size radiograph (2000-3000 px
-// wide) must still zoom until one image pixel covers 4 x 4 screen pixels.
+// The zoom limit: 8 times the fit size, or more for a large image. A full-size radiograph
+// (2000-3000 px wide) must still zoom until one image pixel covers 4 x 4 screen pixels.
+const maxZoom = () => Math.max(MAX_ZOOM, MAX_PIXEL_SIZE * pixelRatio() / view.fit);
+
+// Zooms by `factor` and keeps the image point under (px, py) in the same place.
 function zoomAt(px, py, factor) {
   const anchor = toImage(px, py);
-  const maxZoom = Math.max(MAX_ZOOM, MAX_PIXEL_SIZE * pixelRatio() / view.fit);
-  view.zoom = Math.min(maxZoom, Math.max(1, view.zoom * factor));
+  view.zoom = Math.min(maxZoom(), Math.max(1, view.zoom * factor));
   view.x = px - anchor.x * scale();
   view.y = py - anchor.y * scale();
   clampView();
@@ -252,6 +262,7 @@ function resizeCanvas() {
   el.canvas.height = height;
   if (!picture) return;
   view.fit = fitScale();
+  view.zoom = Math.min(view.zoom, maxZoom());  // the limit depends on the frame size
   view.x = width / 2 - centre.x * scale();
   view.y = height / 2 - centre.y * scale();
   clampView();
@@ -547,6 +558,7 @@ async function run(step) {
     if (!known) console.error(err);  // a bug in this page, not a server answer
     showStatus(known ? err.message : 'Something went wrong on this page. Reload it to continue.', 'stop');
     el.reloadRow.hidden = false;
+    reveal(el.reloadRow);
   } finally {
     busy = false;
     updateButtons();
