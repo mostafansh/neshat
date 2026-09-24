@@ -80,5 +80,6 @@ Not set up yet. When the server exists, it needs:
 
 `data/errors.log` records server errors (5xx) and refused requests (4xx, for example "This
 page expired") in every mode. A phone that says "The server had a problem" means an entry is
-there. A phone that says "Connection lost" means the request did not reach the server: check
-the Wi-Fi.
+there. A phone that says "Connection lost" got no answer: the Wi-Fi dropped, the server is stopped or
+the laptop is asleep, or the answer was too slow. Check that the server still runs, then the
+Wi-Fi.

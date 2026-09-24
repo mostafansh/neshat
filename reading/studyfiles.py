@@ -107,8 +107,10 @@ def check_cases(design: dict, rows: list[dict], folder: Path) -> list[dict]:
                 box = [int(v) for v in row["ai_box"].split()]
             except ValueError:
                 box = []
-            if len(box) != 4 or min(box) < 0:
-                raise StudyFileError(f"{where}: ai_box must be four whole numbers 'x y width height', or empty.")
+            if len(box) != 4 or min(box) < 0 or min(box[2:]) == 0:
+                raise StudyFileError(
+                    f"{where}: ai_box must be four whole numbers 'x y width height' (width and height above 0), or empty."
+                )
         cases.append(
             {
                 "position": position,

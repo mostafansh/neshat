@@ -11,6 +11,7 @@ git ignores. How to start each mode: docs/runbook.md.
 """
 
 import os
+import sys
 from pathlib import Path
 
 from django.contrib.messages import constants as message_level
@@ -161,11 +162,13 @@ MESSAGE_TAGS = {
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {"timed": {"format": "%(asctime)s %(levelname)s %(message)s"}},
     "handlers": {
         "errors_file": {
             "class": "logging.FileHandler",
             "filename": DATA_DIR / "errors.log",
             "level": "WARNING",
+            "formatter": "timed",
             "encoding": "utf-8",
             "delay": True,
         },
@@ -175,6 +178,9 @@ LOGGING = {
         "django.security": {"handlers": ["errors_file"]},
     },
 }
+if sys.argv[1:2] == ["test"]:
+    # The tests make refused requests on purpose. Keep them out of the real log.
+    LOGGING["loggers"] = {}
 
 # Security headers. Everything the page loads must come from this site (offline-first rule).
 SECURE_CSP = {

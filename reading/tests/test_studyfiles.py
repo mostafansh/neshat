@@ -82,6 +82,7 @@ class LoadStudyTests(TestCase):
             "a gap in positions": dict(rows=[[1, "a.png", "yes", "yes", 0.9, ""], [3, "b.png", "no", "no", 0.9, ""]]),
             "an image outside the folder": dict(rows=[[1, "../x.png", "yes", "yes", 0.9, ""]]),
             "a box outside the image": dict(rows=[[1, "a.png", "yes", "yes", 0.9, "5 5 50 50"]]),
+            "a box of zero size": dict(rows=[[1, "a.png", "yes", "yes", 0.9, "1 1 0 0"]]),
             "a planted confidence that stands out": dict(rows=planted_too_confident),
             "a planted suggestion that alone has no box": dict(rows=planted_without_box),
             "a confidence scale of 0": dict(design={**DESIGN, "confidence_max": 0}),

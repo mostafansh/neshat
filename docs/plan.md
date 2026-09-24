@@ -16,7 +16,7 @@ exercises, attendees can sign up to join the pilot.
 |---|---|
 | Repository | New git repo in `im_scared`. The old repo `M:\dataset_curator` is read-only reference; backup in `M:\interface-backup-2026-09-23.bundle`. |
 | Workshop data | Teaching data only. Only room totals leave the server, then the reads are purged. No profile questions. |
-| Workshop images | Public, openly licensed images (FracAtlas X-rays, TCIA CT). No hospital images. |
+| Workshop images | IKHC hospital images, de-identified: pixels only, burned-in text checked by the owner by eye before loading (owner's decision, 2026-09-24). Claude fetches them with the report_fetch and ikhc_fetch skills. Public, openly licensed images (FracAtlas, TCIA) are the fallback. |
 | Workshop day | Online first: attendees use the real site on their mobile data, VPN off. A laptop and travel router run the same app as a warm backup, reached through a second QR code. |
 | Server | Python + Django + SQLite. One Django app. Server-rendered pages. HTMX only for small live updates (waiting screen, projector, results). |
 | Reading screen | One plain JavaScript module (no build step) that talks to Django through a few JSON endpoints: get case, save first read, get AI suggestion, save final read, send events. |
@@ -34,8 +34,6 @@ exercises, attendees can sign up to join the pilot.
 2. Product name (placeholder: [Product name]).
 3. The server: which provider, and when it is ready. The first online deploy should happen by
    mid-October at the latest, so the 3-radiologist checkpoint can run online.
-4. Workshop images: the owner asked (2026-09-24) for IKHC hospital images instead of public
-   ones. The route is open: see the checkpoint log and the chat of that day.
 
 ## Must work by feature freeze (Wed 21 Oct)
 
