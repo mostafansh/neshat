@@ -86,6 +86,7 @@ Dry-run readers learn the trick, so they must not attend the workshop.
 | Date | Milestone | Who, device | Result |
 |---|---|---|---|
 | 2026-09-24 | M0 | Owner, Samsung S21, Chrome, hospital Wi-Fi | All 9 checks passed. Long-press on the image offered Download, Copy, Share and Google Lens (which uploads to Google). Decision: the reading screen draws images on a canvas, never as a plain image, and blocks the long-press menu. |
+| 2026-09-24 | M1 (owner) | Owner, phone, Chrome, hospital Wi-Fi, venue mode | "Works great." Both studies read end to end: the practice study (8 synthetic cases) and "Fracture on hand/wrist X-ray" (8 de-identified IKHC cases). Server record: 32 reads, 16 AI reveals, 18 images sent, 0 refused requests, no server errors. Owner's layout decisions in this session: the image stays in view while only the answers scroll; the first read disappears after the lock. Still open for M1: one ADIR radiologist. |
 
 ## Owner tasks (not code)
 

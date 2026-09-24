@@ -1,5 +1,10 @@
 # Task: prepare the first real study from IKHC images
 
+**Status (2026-09-24): done.** 16 cases prepared with prep/ikhc_wrist.py (8 fracture, 8 no
+fracture, 16 adult patients); the owner checked every image for text and every label. The study
+is loaded and open as `ikhc-wrist` (8 cases, 2 planted; the other 8 are spares). Before the
+workshop: the MSK radiologist approves the cases and the planted errors; AI boxes come later.
+
 For a Claude session started in **bypass permissions** mode in this folder. The owner has given
 standing permission to run the `report_fetch` and `ikhc_fetch` skills for this (CLAUDE.md,
 "How we work" and "Data rules"). Read CLAUDE.md first; its data rules apply to every step.

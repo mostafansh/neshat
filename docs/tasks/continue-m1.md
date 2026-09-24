@@ -1,5 +1,8 @@
 # Task: finish milestone 1 (hand-over from the chat "Building the actual thing")
 
+**Status (2026-09-24): done.** Steps 1-6 are complete and the owner's phone test passed (see the
+checkpoint log in docs/plan.md). The M1 checkpoint still needs one ADIR radiologist.
+
 For a new Claude session in this folder, started in **bypass permissions** mode. The owner
 moved chats because permission prompts interrupted the work. Standing permission applies
 (CLAUDE.md, "How we work"): commit, push, add packages and download without asking; report
