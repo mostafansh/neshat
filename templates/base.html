@@ -15,7 +15,12 @@
       <span>{{ site_name }}</span>
     </a>
     <nav class="site-nav" aria-label="Main">
-      <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' %} aria-current="page"{% endif %}>Home</a>
+      <a href="{% url 'projects' %}"{% if request.resolver_match.url_name == 'projects' %} aria-current="page"{% endif %}>Projects</a>
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'signout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+      {% else %}
+        <a href="{% url 'signin' %}"{% if request.resolver_match.url_name == 'signin' %} aria-current="page"{% endif %}>Sign in</a>
+      {% endif %}
     </nav>
   </header>
   <main id="main" class="site-main">

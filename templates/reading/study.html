@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}{{ study.title }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<h1>{{ study.title }}</h1>
+{% if study.description %}<p class="lede">{{ study.description }}</p>{% endif %}
+
+<div class="stack">
+  <h2>What you will do</h2>
+  <p>You will see {{ study.cases.count }} images, one at a time. For each image you answer
+  "{{ study.question }}" and say how sure you are. Then you lock your answer. After that you
+  may see a suggestion, and you may keep or change your answer.</p>
+  <p>Some details of this exercise will be explained at the end.</p>
+</div>
+
+{% if enrollment %}
+  <a class="btn btn-primary btn-block" href="{% url 'study_read' study.key %}">Continue reading</a>
+{% elif user.is_authenticated %}
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {% if consent_missing %}<p class="notice notice-warn">Tick the box to take part.</p>{% endif %}
+    <div class="choice-list">
+      <label class="choice"><input type="checkbox" name="consent" value="yes" required>
+        I agree. My answers and their timing are recorded for this study.</label>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Start</button>
+  </form>
+{% else %}
+  <a class="btn btn-primary btn-block" href="{% url 'signin' %}?next={{ request.path|urlencode }}">Sign in to take part</a>
+{% endif %}
+{% endblock %}

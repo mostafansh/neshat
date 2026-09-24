@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Projects · {{ site_name }}{% endblock %}
+
+{% block content %}
+<h1>Projects</h1>
+<p class="lede">Choose a project to take part in.</p>
+
+{% if rows %}
+<ul class="card-list">
+  {% for row in rows %}
+  <li class="card stack">
+    <h2>{{ row.study.title }}</h2>
+    {% if row.study.description %}<p>{{ row.study.description }}</p>{% endif %}
+    <p class="muted">{{ row.study.cases.count }} cases · about {{ row.study.cases.count }} minutes</p>
+    {% if row.enrollment.completed_at %}
+      <p><span class="pill pill-ok">Finished</span></p>
+    {% elif row.enrollment %}
+      <a class="btn btn-primary" href="{% url 'study_read' row.study.key %}">Continue</a>
+    {% else %}
+      <a class="btn" href="{% url 'study_detail' row.study.key %}">Read more</a>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="notice notice-info">No project is open at the moment.</p>
+{% endif %}
+{% endblock %}

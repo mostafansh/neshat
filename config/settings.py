@@ -56,6 +56,10 @@ else:
         raise RuntimeError("Online mode needs NESHAT_HOSTS, for example NESHAT_HOSTS=study.example.ir")
 
 AUTH_USER_MODEL = "reading.User"
+LOGIN_URL = "signin"
+LOGIN_REDIRECT_URL = "projects"
+LOGOUT_REDIRECT_URL = "home"
+CSRF_FAILURE_VIEW = "reading.api.csrf_failure"
 
 INSTALLED_APPS = [
     "django.contrib.admin",

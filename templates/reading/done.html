@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}Finished · {{ site_name }}{% endblock %}
+
+{% block content %}
+<h1>You finished. Thank you.</h1>
+<p class="lede">All your answers for "{{ study.title }}" are saved.</p>
+<p class="muted">The explanation of this exercise comes here in the next version.</p>
+<a class="btn" href="{% url 'projects' %}">Back to projects</a>
+{% endblock %}

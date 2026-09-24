@@ -59,7 +59,7 @@ class DemoImageTests(TestCase):
         self.assertEqual(response.headers["Content-Type"], "image/png")
         self.assertIn("private", response.headers["Cache-Control"])
 
-        with Image.open(self.media_dir / "demo" / "phantom-v2.png") as image:
+        with Image.open(self.media_dir / "demo" / "phantom-v3.png") as image:
             self.assertEqual(image.mode, "L")  # 8-bit greyscale: pixels only, no DICOM
             self.assertEqual(image.size, (1024, 1280))
 
@@ -69,8 +69,8 @@ class DemoImageTests(TestCase):
 
     def test_case_images_are_not_public_static_files(self):
         self.client.get(reverse("demo_image"))
-        self.assertIsNone(finders.find("demo/phantom-v2.png"))
-        self.assertEqual(self.client.get("/static/demo/phantom-v2.png").status_code, 404)
+        self.assertIsNone(finders.find("demo/phantom-v3.png"))
+        self.assertEqual(self.client.get("/static/demo/phantom-v3.png").status_code, 404)
 
 
 class VenueAdminGuardTests(TestCase):

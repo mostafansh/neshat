@@ -26,6 +26,7 @@ exercises, attendees can sign up to join the pilot.
 | Study setup | The owner describes each study in chat; Claude writes it as a study file plus a case list and loads it with one command. The friendly study builder comes after the congress. |
 | GitHub | A new private repo (name open). The existing private repo `mostafansh/Autoclave` (July 2026 vision for a DICOM cleaning engine) stays untouched. |
 | Live room | Organizer-paced: everyone reads the same case at the same time. Same AI suggestion for every reader on a case. Results stay hidden until the organizer presses "Show". |
+| "Unsure" answers | "Unsure" on the first read is its own row in the 2x2 table, not counted as rescued or talked-out. "Unsure" on the final answer counts as "not right". |
 
 ## Open decisions
 
@@ -33,7 +34,8 @@ exercises, attendees can sign up to join the pilot.
 2. Product name (placeholder: [Product name]).
 3. The server: which provider, and when it is ready. The first online deploy should happen by
    mid-October at the latest, so the 3-radiologist checkpoint can run online.
-4. A written rule for "Unsure" answers in the 2x2 table.
+4. Workshop images: the owner asked (2026-09-24) for IKHC hospital images instead of public
+   ones. The route is open: see the checkpoint log and the chat of that day.
 
 ## Must work by feature freeze (Wed 21 Oct)
 

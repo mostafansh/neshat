@@ -60,9 +60,17 @@ context before status. Keep the technical detail; restructure it, do not drop it
 ## Data rules
 
 - Workshop reads are teaching data. Only room totals leave the laptop or server; then purge.
-- Workshop images come from public, openly licensed collections. Credit them in the README.
-- No hospital data in this repo. No PACS fetches or hospital report queries from this repo.
-  Never send hospital images through Claude: that sends them abroad.
+- Workshop images: IKHC hospital images, de-identified (owner's decision, 2026-09-24). Public,
+  openly licensed images are the fallback; credit them in the README if used.
+- Hospital data access: Claude may run the ikhc_fetch and report_fetch skills for this project
+  (standing permission, see "How we work"). The owner accepts that query results then pass
+  through Anthropic's servers abroad. Pull the minimum: never names, national codes, phone
+  numbers or addresses; only counts, study keys, dates, body part and report findings.
+- Only pixels enter the site: no DICOM headers; burned-in text removed, and checked by the
+  owner by eye before a case is loaded. The map from case code to hospital study key stays in
+  the dataset folder outside the repo, never in git or the site database.
+- Claude never views real case images (no screenshots of real cases). Browser checks by
+  Claude use synthetic cases; the owner checks real cases on the phone.
 - Never commit data/, images, DICOM, databases, exports or literature/*.pdf.
 - Keep downloaded source datasets outside this repo folder: DICOM files often have no
   extension, so .gitignore cannot catch them.
@@ -76,7 +84,10 @@ context before status. Keep the technical detail; restructure it, do not drop it
 - M:\dataset_curator (GitHub mostafansh/interface) is a read-only reference. Never modify it.
   Code ported from it cites `mostafansh/interface@b6adb6d` in the commit message.
 - Never discard or "clean up" the owner's uncommitted changes.
-- Ask before any push, and before adding any dependency.
+- Standing permission (owner, 2026-09-24: "you have all the permission"): commit and push to
+  the private GitHub repo, add dependencies, download public datasets and run the hospital
+  skills without asking first. Report what was done afterwards. Still ask before deleting the
+  owner's data or rewriting Git history, because those cannot be undone.
 - Do not add hooks, graphify or other tooling config unless the owner asks.
 
 ## Stack and commands
