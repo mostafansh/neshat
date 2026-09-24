@@ -778,6 +778,7 @@ input[type="file"] { max-inline-size: 100%; }
   inset-block-start: .5rem;
   inset-inline-start: .5rem;
   background: var(--viewport);
+  pointer-events: none;  /* a drag or wheel that starts on the label still reaches the image */
 }
 
 
@@ -849,6 +850,11 @@ input[type="file"] { max-inline-size: 100%; }
 .reader-view > * + * { margin-block-start: .5rem; }
 .reader-panel { margin-block-start: .5rem; }
 
+/* The room the slice bar takes under the frame: none for a single image. The
+   script adds .is-stack when a case is a stack of slices. */
+.reader { --slice-bar: 0rem; }
+.reader.is-stack { --slice-bar: 4.5rem; }
+
 /* Room for the answers under the image. svh (the small viewport height) does
    not change when a phone hides its address bar, so the image does not
    resize while the reader scrolls. The vh line is for older browsers. */
@@ -862,6 +868,7 @@ input[type="file"] { max-inline-size: 100%; }
    case number and the space around it. */
 @media (max-width: 47.99rem) and (orientation: portrait), (max-width: 35.99rem) {
   html:has(.reader-view) { scroll-padding-block-start: calc(min(100vw - 2rem, 55svh) + 4rem); }
+  html:has(.reader.is-stack) { scroll-padding-block-start: calc(min(100vw - 2rem, 55svh) + 8.5rem); }
 }
 
 @media (min-width: 48rem), (orientation: landscape) and (min-width: 36rem) {
@@ -872,11 +879,11 @@ input[type="file"] { max-inline-size: 100%; }
     align-items: start;
   }
   .reader-panel { margin-block-start: 0; padding-block-start: .5rem; }
-  /* Room above the image for the header and the title, so the whole image
-     shows on a laptop before any scrolling. */
+  /* Room above the image for the header and the title, and below it for the
+     slice bar, so the whole image shows on a laptop before any scrolling. */
   .reader-view .frame {
-    max-height: calc(100vh - 11rem);
-    max-height: calc(100svh - 11rem);
+    max-height: calc(100vh - 11rem - var(--slice-bar));
+    max-height: calc(100svh - 11rem - var(--slice-bar));
   }
 }
 
@@ -885,8 +892,8 @@ input[type="file"] { max-inline-size: 100%; }
    height. */
 @media (orientation: landscape) and (min-width: 36rem) and (max-height: 30rem) {
   .reader-view .frame {
-    max-height: calc(100vh - 4rem);
-    max-height: calc(100svh - 4rem);
+    max-height: calc(100vh - 4rem - var(--slice-bar));
+    max-height: calc(100svh - 4rem - var(--slice-bar));
   }
 }
 
@@ -898,6 +905,107 @@ input[type="file"] { max-inline-size: 100%; }
   cursor: grab;
 }
 .frame > canvas.pan-zoom.is-dragging { cursor: grabbing; }
+
+/* The slice number of a stack, in the top end corner of the frame. A drag
+   that starts on it still reaches the image. */
+.frame > .slice-badge {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: .5rem;
+  inset-inline-end: .5rem;
+  padding-block: .125rem;
+  padding-inline: .5rem;
+  background: var(--viewport);
+  color: var(--ink);
+  border-radius: var(--radius);
+  font-size: .75rem;
+  pointer-events: none;
+}
+
+/* The slice bar of a stack: a step button on each side of a slider, and the
+   slice number under it. The slider is the browser's own
+   <input type="range">, so touch and keyboard work as on any page; only its
+   look is set here. */
+.slice-bar {
+  display: grid;
+  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  align-items: center;
+  column-gap: .5rem;
+}
+
+.slice-step {
+  padding-inline: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.slice-label {
+  grid-column: 1 / -1;
+  font-size: .875rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.slice-track {
+  --thumb: 1.25rem;  /* the knob's width: the AI mark lines up with its centre */
+  position: relative;
+}
+
+.slice-range {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Each browser family needs its own track and knob rules (-webkit-, -moz-).
+   They cannot share one rule: a browser drops a rule with a selector it does
+   not know. */
+.slice-range::-webkit-slider-runnable-track {
+  height: .25rem;
+  background: var(--line-strong);
+  border-radius: var(--radius);
+}
+.slice-range::-moz-range-track {
+  height: .25rem;
+  background: var(--line-strong);
+  border-radius: var(--radius);
+}
+.slice-range::-webkit-slider-thumb {
+  box-sizing: border-box;
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-block-start: calc(.125rem - var(--thumb) / 2);  /* centred on the track */
+  background: var(--accent);
+  border: 2px solid var(--ground);
+  border-radius: var(--radius);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.slice-range::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--thumb);
+  height: var(--thumb);
+  background: var(--accent);
+  border: 2px solid var(--ground);
+  border-radius: var(--radius);
+}
+
+/* The slices that carry the AI box, under the slider: the one dashed --ai
+   line, like the AI mark on the image. The script sets --from and --to
+   (0 to 1 along the slider). Never add a variant. */
+.slice-ai {
+  position: absolute;
+  inset-block-start: calc(50% + var(--thumb) / 2 + .125rem);
+  inset-inline-start: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--from, 0));
+  inline-size: calc((100% - var(--thumb)) * (var(--to, 1) - var(--from, 0)));
+  border-block-start: 3px dashed var(--ai);
+  pointer-events: none;
+}
 
 /* The AI suggestion. The dashed --ai edge matches the dashed AI mark on the
    image and .badge-ai: the one AI style, used for every suggestion.

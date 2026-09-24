@@ -131,6 +131,7 @@ class NoAIBeforeTheLockTests(ReadingTestCase):
         ai = response.json()["ai"]
         self.assertEqual(ai["source"], SENTINEL_SOURCE)
         self.assertEqual(ai["confidence"], 0.81)
+        self.assertIsNone(ai["box_slices"])  # a single image, not a stack
         self.assertEqual(AIExposure.objects.count(), 1)
 
 
@@ -259,6 +260,7 @@ class ImageWindowTests(ReadingTestCase):
         self.join()
         response = self.image(1)
         self.assertEqual(response["Content-Type"], "image/png")
+        self.assertEqual(int(response["Content-Length"]), len(response.content))
         self.assertIn("no-store", response["Cache-Control"])
         self.assertNotIn("Content-Disposition", response.headers)
         self.assertEqual(len(ImageAccess.objects.get(allowed=True).sha256), 64)

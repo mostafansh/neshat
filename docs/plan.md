@@ -22,6 +22,7 @@ exercises, attendees can sign up to join the pilot.
 | Reading screen | One plain JavaScript module (no build step) that talks to Django through a few JSON endpoints: get case, save first read, get AI suggestion, save final read, send events. |
 | Images | The server sends ready-to-display 8-bit images, with 2-3 preset windows made on the server. No DICOM and no raw data reach the browser. Marks are stored in image-pixel coordinates with our own IDs, so a later switch to Cornerstone3D does not lose data. |
 | CT phase task | 2-3 pre-windowed key images per case, no scrolling viewer (as the deck promises). |
+| MRI stacks | Readers scroll server-prepared 8-bit PNG stacks on the phone; 3D Slicer stays on the owner's PC as a checking tool, never for readers (owner's decision, 2026-09-24). MRI only for now (public UMD data first); CT keeps pre-windowed key images. No W/L on the phone. Every case opens on the middle slice; drag down = next slice. Details: `docs/reading-api.md`. |
 | Hosting | Inside Iran, on a server the owner buys. No Cloudflare and no foreign proxy (sanctions, shutdowns, data abroad). Until the server exists, everything runs locally. Server resources are discussed separately. |
 | Study setup | The owner describes each study in chat; Claude writes it as a study file plus a case list and loads it with one command. The friendly study builder comes after the congress. |
 | GitHub | A new private repo (name open). The existing private repo `mostafansh/Autoclave` (July 2026 vision for a DICOM cleaning engine) stays untouched. |

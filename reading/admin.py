@@ -26,7 +26,7 @@ class StudyAdmin(ReadOnlyAdmin):
 
 @admin.register(Case)
 class CaseAdmin(ReadOnlyAdmin):
-    list_display = ["study", "position", "code", "truth", "ai_answer", "ai_confidence", "ai_planted"]
+    list_display = ["study", "position", "code", "slices", "truth", "ai_answer", "ai_confidence", "ai_planted"]
     list_filter = ["study"]
 
 

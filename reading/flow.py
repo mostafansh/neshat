@@ -15,6 +15,8 @@ from django.utils import timezone
 from .models import AIExposure, Enrollment, ImageAccess, Presentation, Read, Study
 
 MAX_ELAPSED_MS = 24 * 60 * 60 * 1000
+PNG_TYPE = "image/png"  # one image
+STACK_TYPE = "application/vnd.neshat.stack"  # one stack file (studyfiles.stack_bytes)
 
 
 class FlowError(Exception):
@@ -54,7 +56,8 @@ def image_url(presentation: Presentation) -> str:
 
 def ai_payload(presentation: Presentation) -> dict:
     """What the reader sees of the AI suggestion. The same shape whether it is correct or
-    planted: the page cannot tell them apart (rule 6)."""
+    planted: the page cannot tell them apart (rule 6). box_slices is [first, last] for a box
+    on a stack, and None for a single image or no box."""
     case, study = presentation.case, presentation.enrollment.study
     return {
         "source": study.ai_source,
@@ -62,6 +65,7 @@ def ai_payload(presentation: Presentation) -> dict:
         "label": study.label_for(case.ai_answer),
         "confidence": round(case.ai_confidence, 2),
         "box": case.ai_box,
+        "box_slices": case.ai_slices,
     }
 
 
@@ -175,8 +179,9 @@ def record_final(presentation: Presentation, body: dict) -> dict:
     return {"next": more}
 
 
-def image_bytes(user, alias: str, remote_addr: str | None) -> bytes | None:
-    """The image of one presentation, or None when refused. Every request is logged.
+def image_bytes(user, alias: str, remote_addr: str | None) -> tuple[bytes, str] | None:
+    """The image file of one presentation and its content type, or None when refused. Every
+    request is logged. The file is one PNG, or one stack file for a stack case.
 
     A reader gets only the images of their current case, the case before and the case after.
     The reading screen never asks for anything else, so any other request is a tripwire.
@@ -205,6 +210,7 @@ def image_bytes(user, alias: str, remote_addr: str | None) -> bytes | None:
         log(False, "outside the window")
         return None
 
-    data = (settings.CASE_MEDIA_ROOT / presentation.case.image).read_bytes()
+    case = presentation.case
+    data = (settings.CASE_MEDIA_ROOT / case.image).read_bytes()
     log(True, sha256=hashlib.sha256(data).hexdigest())
-    return data
+    return data, STACK_TYPE if case.slices > 1 else PNG_TYPE

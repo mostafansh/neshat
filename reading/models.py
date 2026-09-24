@@ -1,7 +1,8 @@
 """The data the site stores. Words follow docs/reading-api.md.
 
 Study      one project, e.g. "Fracture on hand/wrist X-ray"
-Case       one image in a study, with the correct answer and the AI suggestion
+Case       one image or one stack of slices in a study, with the correct answer and the AI
+           suggestion
 Enrollment one reader taking part in one study
 Presentation  one case shown to one reader, at one position, under a random alias
 Read       one locked answer: the first (unaided) read or the final read
@@ -74,14 +75,16 @@ class Case(models.Model):
     study = models.ForeignKey(Study, on_delete=models.CASCADE, related_name="cases")
     position = models.PositiveIntegerField()  # fixed order, 1..N
     code = models.CharField(max_length=16, unique=True, default=new_case_code)
-    image = models.CharField(max_length=200)  # path inside CASE_MEDIA_ROOT
-    image_sha256 = models.CharField(max_length=64)
-    width = models.PositiveIntegerField()
+    image = models.CharField(max_length=200)  # path inside CASE_MEDIA_ROOT: <code>.png or <code>.stk
+    image_sha256 = models.CharField(max_length=64)  # of the whole stored file
+    width = models.PositiveIntegerField()  # of the image, or of each slice of a stack
     height = models.PositiveIntegerField()
+    slices = models.PositiveSmallIntegerField(default=1)  # 1: one image; 2 to 64: a stack file
     truth = models.CharField(max_length=50)
     ai_answer = models.CharField(max_length=50)
     ai_confidence = models.FloatField()
     ai_box = models.JSONField(null=True, blank=True)  # [x, y, w, h] in image pixels, or null
+    ai_slices = models.JSONField(null=True, blank=True)  # stacks: [first, last] slices of ai_box, from 0
     ai_planted = models.BooleanField()  # True when the AI answer is deliberately wrong
 
     class Meta:

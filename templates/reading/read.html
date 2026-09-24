@@ -22,6 +22,19 @@
       <canvas id="view" class="pan-zoom" role="img"
               aria-label="Case image. Drag to move. Pinch or scroll to zoom. Double-tap to reset.">Case image</canvas>
       <span id="ai-mark" class="badge-ai" hidden>AI</span>
+      <span id="slice-badge" class="slice-badge num" aria-hidden="true" hidden></span>
+    </div>
+
+    {# Only for a stack of slices (an MRI series); the script shows it. The native slider #}
+    {# keeps touch and keyboard focus working on every phone. #}
+    <div id="slice-bar" class="slice-bar" hidden>
+      <button id="slice-prev" type="button" class="btn slice-step" aria-label="Previous slice">‹</button>
+      <div class="slice-track">
+        <input id="slice-range" class="slice-range" type="range" min="1" max="2" step="1" value="1" aria-label="Slice">
+        <span id="slice-ai" class="slice-ai" aria-hidden="true" hidden></span>
+      </div>
+      <button id="slice-next" type="button" class="btn slice-step" aria-label="Next slice">›</button>
+      <span id="slice-label" class="slice-label num muted" aria-hidden="true"></span>
     </div>
 
     {# Connection and error messages. Screen readers announce changes here. #}
@@ -30,7 +43,8 @@
   </div>
 
   <div class="reader-panel stack">
-    <p class="muted"><small>Pinch or scroll to zoom. Drag to move. Double-tap to reset.</small></p>
+    {# The script swaps in the stack hint when a case has slices. #}
+    <p class="muted"><small id="hint">Pinch or scroll to zoom. Drag to move. Double-tap to reset.</small></p>
 
     {# Hidden again once the first read is locked: the reader then sees only the AI suggestion and the final answer. #}
     <section id="first" class="stack" aria-labelledby="first-heading" hidden>
@@ -47,6 +61,7 @@
     <section id="ai-panel" class="ai-panel stack" aria-labelledby="ai-heading" tabindex="-1" hidden>
       <h2 id="ai-heading"><span class="badge-ai">AI suggestion</span></h2>
       <p><strong id="ai-label"></strong> <span id="ai-confidence" class="num"></span></p>
+      <p id="ai-slices" hidden></p>
       <p id="ai-source" class="muted"></p>
     </section>
 

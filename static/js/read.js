@@ -2,9 +2,13 @@
 // the server sends back, then takes the final read. The page templates/reading/read.html
 // holds the markup; docs/reading-api.md is the contract with the server.
 //
+// A case is one image (an X-ray) or a stack of slices (an MRI series). A stack arrives as one
+// file. The reader then scrolls through its slices with no further download.
+//
 // Rules this file keeps (see CLAUDE.md):
 // - The page never knows the AI suggestion before the server has stored the first read. It
-//   arrives only in the answer to "Lock my read" (rule 1).
+//   arrives only in the answer to "Lock my read" (rule 1). A stack always opens on its middle
+//   slice, never on the slice the AI points at.
 // - Every AI suggestion is drawn the same way, with no variant (rule 6).
 // - The venue is plain HTTP, so no crypto.randomUUID, crypto.subtle, clipboard, wake lock or
 //   service worker. Nothing is loaded from another server (rule 7).
@@ -16,6 +20,9 @@ const API = reader.dataset.api;            // for example "/api/s/wrist-fracture
 const DONE_URL = reader.dataset.doneUrl;   // the "all cases finished" page
 const MAX_ZOOM = 8;         // times the fit size; large images may go further (see zoomAt)
 const MAX_PIXEL_SIZE = 4;   // at most zoom, one image pixel may cover at least 4 x 4 screen pixels
+const STALL_MS = 20000;     // an image download stops after 20 s with no new bytes
+const PNG = 'image/png';                       // the file type of one image
+const STACK = 'application/vnd.neshat.stack';  // the file type of a stack: all slices of a case
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -25,7 +32,10 @@ const el = {
   aiPanel: $('ai-panel'), aiLabel: $('ai-label'), aiConfidence: $('ai-confidence'),
   aiSource: $('ai-source'), final: $('final'), submitFinal: $('submit-final'),
   finalAnswer: $('final-answer'), finalConfidence: $('final-confidence'),
-  reloadRow: $('reload-row'), reload: $('reload'),
+  reloadRow: $('reload-row'), reload: $('reload'), hint: $('hint'), aiSlices: $('ai-slices'),
+  sliceBar: $('slice-bar'), sliceRange: $('slice-range'), sliceAi: $('slice-ai'),
+  slicePrev: $('slice-prev'), sliceNext: $('slice-next'), sliceLabel: $('slice-label'),
+  sliceBadge: $('slice-badge'),
 };
 
 let task = null;        // the case on screen: the JSON from GET current
@@ -37,7 +47,8 @@ let stopped = false;    // the server refused a request: wait for a reload
 
 // ---- 1. Talking to the server ------------------------------------------------------------
 
-// A 4xx answer. Trying again will not help, so the page shows the server's words and stops.
+// A 4xx answer, or a file that cannot be used. Trying again will not help, so the page shows
+// the words and stops.
 class Refused extends Error {}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -54,19 +65,23 @@ function csrfToken() {
 // Sends one request and reads its body. Venue Wi-Fi drops out, so a network error, a
 // time-out or a 5xx answer is retried after 1, 2, 4, 8, 15, 15... seconds. The retry sends
 // the exact same request, with the same submission_id, so the server stores the answer once.
-// Each retry allows twice as long (up to 4 minutes), so a slow but working link can still
-// finish a large image: a new try starts the download from zero.
-async function request(url, options, readBody, timeoutMs = 20000) {
+// Two kinds of time-out:
+// - A data call must finish in 20 s. Each retry allows twice as long, up to 4 minutes.
+// - An image download (stall = true) may take as long as it needs, but stops after 20 s with
+//   no new bytes: readBody calls alive() for every piece that arrives. So a slow but working
+//   link can finish a 3 MB stack, and a dead link is noticed after 20 s.
+async function request(url, options, readBody, stall = false) {
   let wait = 1000;
+  let timeoutMs = stall ? STALL_MS : 20000;
   for (;;) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = abortTimer(controller, timeoutMs);
     let res = null;
     try {
       res = await fetch(url, { ...options, credentials: 'same-origin', signal: controller.signal });
       if (res.status < 500) {
         if (!res.ok) throw new Refused(await refusalText(res));
-        const body = await readBody(res);
+        const body = await readBody(res, timer.restart);
         if (el.status.dataset.kind === 'warn') showStatus('');  // the connection is back
         return body;
       }
@@ -74,7 +89,7 @@ async function request(url, options, readBody, timeoutMs = 20000) {
       if (err instanceof Refused) throw err;
       // Otherwise it was a network error or a time-out: try again below.
     } finally {
-      clearTimeout(timer);
+      timer.stop();
     }
     // A 5xx answer means the connection works but the server failed: say so, so nobody
     // looks for the fault in the Wi-Fi. data/errors.log on the laptop has the details.
@@ -82,8 +97,20 @@ async function request(url, options, readBody, timeoutMs = 20000) {
     showStatus(serverFault ? 'The server had a problem. Trying again…' : 'Connection lost. Trying again…', 'warn');
     await sleep(wait);
     wait = Math.min(wait * 2, 15000);
-    timeoutMs = Math.min(timeoutMs * 2, 240000);
+    if (!stall) timeoutMs = Math.min(timeoutMs * 2, 240000);
   }
+}
+
+// Aborts a request after `ms`. restart() starts the count again from zero: a download calls
+// it whenever bytes arrive, so only a stall stops it.
+function abortTimer(controller, ms) {
+  let id = 0;
+  const restart = () => {
+    clearTimeout(id);
+    id = setTimeout(() => controller.abort(), ms);
+  };
+  restart();
+  return { restart, stop: () => clearTimeout(id) };
 }
 
 async function refusalText(res) {
@@ -133,10 +160,83 @@ function reveal(element) {
 }
 
 
-// ---- 2. Images: download, decode, keep in memory -----------------------------------------
+// ---- 2. Images: download, unpack, decode, keep in memory ---------------------------------
+// A case's image arrives as one of two file types (docs/reading-api.md):
+// - image/png: one image.
+// - a stack file: the letters "NSTK", the slice count, then for each slice its length and its
+//   PNG bytes. Each number is 4 bytes, big-endian. Nothing else: no names, no positions.
 
-let picture = null;   // the decoded image of the case on screen
-let upcoming = null;  // { url, promise }: the next case's image, loading or ready
+let slices = [];      // the decoded slices of the case on screen (just one for a single image)
+let sliceIndex = 0;   // the slice on screen, counted from 0
+let picture = null;   // slices[sliceIndex]: the decoded image on screen
+let upcoming = null;  // { url, promise, controller, showProgress }: the next case's file
+
+// Reads an image answer piece by piece. alive() restarts the stall timer; onProgress gets the
+// bytes so far and the total (0 if the server did not say). Returns the raw bytes and their
+// type. Decoding waits until the case is on screen.
+async function readImage(res, alive, onProgress) {
+  const type = (res.headers.get('Content-Type') || '').split(';')[0].trim();
+  if (type !== PNG && type !== STACK) {
+    throw new Refused('The image did not arrive. Reload the page, and sign in again if asked.');
+  }
+  const total = Number(res.headers.get('Content-Length')) || 0;
+  const stream = res.body.getReader();
+  const pieces = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await stream.read();
+    if (done) break;
+    pieces.push(value);
+    received += value.length;
+    alive();
+    onProgress(received, total);
+  }
+  const bytes = new Uint8Array(received);  // the pieces as one block
+  let at = 0;
+  for (const piece of pieces) {
+    bytes.set(piece, at);
+    at += piece.length;
+  }
+  return { type, bytes };
+}
+
+// "Loading image… 1.2 of 2.9 MB", when the server says the size. A file under 0.5 MB arrives
+// in a moment and keeps "Loading image…". The text changes at most once per 0.1 MB, so a
+// screen reader is not flooded.
+function showProgress(received, total) {
+  if (total < 500000) return;
+  const mb = (bytes) => (bytes / 1e6).toFixed(1);
+  const text = `Loading image… ${mb(received)} of ${mb(total)} MB`;
+  if (el.status.textContent !== text) showStatus(text);
+}
+
+// Cuts a stack file into one PNG Blob per slice. A damaged file stops the page.
+function splitStack(bytes) {
+  const damaged = () => new Refused(
+    'The image of this case is damaged. Reload the page. If this happens again, tell the organiser.');
+  const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.length < 8 || String.fromCharCode(...bytes.subarray(0, 4)) !== 'NSTK') throw damaged();
+  const count = data.getUint32(4);  // DataView reads big-endian unless told otherwise
+  const blobs = [];
+  let at = 8;
+  while (blobs.length < count) {
+    if (at + 4 > bytes.length) throw damaged();
+    const length = data.getUint32(at);
+    at += 4;
+    if (length === 0 || at + length > bytes.length) throw damaged();
+    blobs.push(new Blob([bytes.subarray(at, at + length)], { type: PNG }));
+    at += length;
+  }
+  if (count === 0 || at !== bytes.length) throw damaged();  // nothing may follow the last slice
+  return blobs;
+}
+
+// Decodes every slice before the case starts, so scrolling never waits. A slice that cannot
+// be decoded stops the page; the reload frees the memory.
+function decodeFile({ type, bytes }) {
+  const blobs = type === STACK ? splitStack(bytes) : [new Blob([bytes], { type: PNG })];
+  return Promise.all(blobs.map(decode));
+}
 
 // Turns PNG bytes into something a canvas can draw, without an address in the page.
 async function decode(blob) {
@@ -159,31 +259,40 @@ function release(pic) {
   if (pic && pic.close) pic.close();
 }
 
-// Loads the next case's image while the reader works on this one. One try only: if it
-// fails, the next case downloads the image again when it starts.
+// Downloads the next case's file while the reader works on this one. It keeps the bytes
+// only: decoded slices take much more memory, so decoding waits until that case starts.
+// One try only: if it fails, the next case downloads the file again when it starts.
 function prefetch(url) {
   if (upcoming && upcoming.url === url) return;
-  if (upcoming) upcoming.promise.then(release, () => {});
+  if (upcoming) upcoming.controller.abort();  // no longer needed: save the reader's data
   upcoming = null;
   if (!url) return;
   const controller = new AbortController();
-  setTimeout(() => controller.abort(), 60000);  // a stalled download must not block the next case
-  const promise = fetch(url, { credentials: 'same-origin', signal: controller.signal })
-    .then((res) => { if (!res.ok) throw new Error(`prefetch ${res.status}`); return res.blob(); })
-    .then(decode);
-  promise.catch(() => {});  // a failed prefetch is not an error on screen
-  upcoming = { url, promise };
+  const timer = abortTimer(controller, STALL_MS);  // a stalled download must not block the next case
+  const next = { url, controller, showProgress: false };
+  const onProgress = (received, total) => { if (next.showProgress) showProgress(received, total); };
+  next.promise = fetch(url, { credentials: 'same-origin', signal: controller.signal })
+    .then((res) => {
+      if (!res.ok) throw new Error(`prefetch ${res.status}`);
+      return readImage(res, timer.restart, onProgress);
+    })
+    .finally(timer.stop);
+  next.promise.catch(() => {});  // a failed prefetch is not an error on screen
+  upcoming = next;
 }
 
-// The image for a case: the prefetched copy if there is one, else a fresh download.
-async function pictureFor(url) {
+// The decoded slices of a case: from the prefetched file if there is one, else a fresh
+// download. A prefetch that is still running shows its progress from now on.
+async function slicesFor(url) {
+  let file = null;
   if (upcoming && upcoming.url === url) {
-    const { promise } = upcoming;
+    const next = upcoming;
     upcoming = null;
-    try { return await promise; } catch { /* the prefetch failed: download it below */ }
+    next.showProgress = true;
+    try { file = await next.promise; } catch { /* the prefetch failed: download it below */ }
   }
-  const blob = await request(url, {}, (res) => res.blob(), 30000);
-  return decode(blob);
+  if (!file) file = await request(url, {}, (res, alive) => readImage(res, alive, showProgress), true);
+  return decodeFile(file);
 }
 
 
@@ -195,6 +304,7 @@ async function pictureFor(url) {
 const ctx = el.canvas.getContext('2d');
 const view = { fit: 1, zoom: 1, x: 0, y: 0 };  // fit: whole image in the frame; zoom: 1 or more
 let aiBox = null;                               // [x, y, width, height] in image pixels
+let aiRange = [0, 0];                           // the slices that carry the AI box: first, last
 let drawPending = false;
 
 const picWidth = () => picture.naturalWidth || picture.width;
@@ -284,7 +394,10 @@ function draw() {
   ctx.setTransform(s, 0, 0, s, view.x, view.y);
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(picture, 0, 0);
-  if (aiBox) drawAiBox(s);
+  // On a stack the box belongs to some slices only. The "AI" label shows only with its box.
+  const boxHere = Boolean(aiBox) && sliceIndex >= aiRange[0] && sliceIndex <= aiRange[1];
+  el.aiMark.hidden = !boxHere;
+  if (boxHere) drawAiBox(s);
 }
 
 // The AI mark: a dashed line in --ai over a solid black line (--viewport), so it shows on
@@ -305,12 +418,105 @@ function drawAiBox(s) {
 }
 
 
-// ---- 4. Gestures: drag, pinch, wheel, double-tap -----------------------------------------
+// ---- 4. Slices of a stack ----------------------------------------------------------------
+// A stack shows one slice at a time. The slider, the two step buttons, the drag, the wheel
+// and the keys all end in showSlice. A single image has no slice controls.
+
+const HINT_SINGLE = el.hint.textContent;  // the page's own hint, for a single image
+const HINT_STACK = 'Drag up or down for slices. Pinch to zoom. Two fingers to move. Double-tap to reset.';
+const LABEL_SINGLE = el.canvas.getAttribute('aria-label');
+const LABEL_STACK = `Case image, one slice of a stack. ${HINT_STACK}`;
+
+// The middle of a range of slices, rounded down. Every case opens on the middle slice of the
+// whole stack, never on the slice the AI points at (rule 1).
+const middle = (first, last) => Math.floor((first + last) / 2);
+
+// Frees the last case's slices and hides their controls, so a slow download never shows them
+// under the new case number. Phones have little memory to spare.
+function clearSlices() {
+  slices.forEach(release);
+  slices = [];
+  picture = null;
+  el.sliceBar.hidden = true;
+  el.sliceBadge.hidden = true;
+}
+
+// Puts a new case's decoded slices on screen, on the middle slice. Shows the slice controls
+// for a stack, and today's hint and controls for a single image.
+function setSlices(list) {
+  slices = list;
+  sliceIndex = middle(0, slices.length - 1);
+  picture = slices[sliceIndex];
+  const stack = slices.length > 1;
+  reader.classList.toggle('is-stack', stack);  // the CSS makes room for the slice controls
+  el.sliceBar.hidden = !stack;
+  el.sliceBadge.hidden = !stack;
+  el.sliceAi.hidden = true;
+  el.hint.textContent = stack ? HINT_STACK : HINT_SINGLE;
+  el.canvas.setAttribute('aria-label', stack ? LABEL_STACK : LABEL_SINGLE);
+  if (stack) el.frame.tabIndex = 0;  // the arrow keys work on the focused frame
+  else el.frame.removeAttribute('tabindex');
+  el.sliceRange.max = String(slices.length);
+  wheelSum = 0;
+  if (stack) showSliceNumber();
+}
+
+// Moves to slice `index` (kept inside the stack) and updates the numbers on screen.
+function showSlice(index) {
+  const i = Math.min(slices.length - 1, Math.max(0, index));
+  if (i === sliceIndex) return;
+  sliceIndex = i;
+  picture = slices[i];
+  showSliceNumber();
+  requestDraw();
+}
+
+// People count slices from 1: "Slice 12 / 24" under the frame, "12/24" in its corner.
+function showSliceNumber() {
+  const number = sliceIndex + 1;
+  const n = slices.length;
+  el.sliceRange.value = String(number);
+  el.sliceRange.setAttribute('aria-valuetext', `Slice ${number} of ${n}`);
+  el.sliceLabel.textContent = `Slice ${number} / ${n}`;
+  el.sliceBadge.textContent = `${number}/${n}`;
+}
+
+// The server's box_slices: [first, last], counted from 0 (the loader checked they fit). A
+// single image has one slice. A box without a range stays on every slice.
+function boxRange(range) {
+  const valid = Array.isArray(range) && range.length === 2;
+  return valid ? range.map(Number) : [0, slices.length - 1];
+}
+
+// One dashed --ai mark under the slider, over the slices that carry the AI box. Its ends sit
+// half a slice beyond the first and the last slice, so a one-slice box still shows. The CSS
+// turns --from and --to (0 to 1 along the slider) into a position.
+function markAiSlices() {
+  const n = slices.length;
+  el.sliceAi.hidden = !aiBox || n < 2;
+  if (el.sliceAi.hidden) return;
+  const [first, last] = aiRange;
+  el.sliceAi.style.setProperty('--from', String(Math.max(0, (first - 0.5) / (n - 1))));
+  el.sliceAi.style.setProperty('--to', String(Math.min(1, (last + 0.5) / (n - 1))));
+}
+
+el.sliceRange.addEventListener('input', () => showSlice(Number(el.sliceRange.value) - 1));
+el.slicePrev.addEventListener('click', () => showSlice(sliceIndex - 1));
+el.sliceNext.addEventListener('click', () => showSlice(sliceIndex + 1));
+
+
+// ---- 5. Gestures: drag, pinch, wheel, double-tap, keys -----------------------------------
 // Pointer Events cover mouse, finger and pen with one set of handlers.
+// A single image: one finger moves it. A stack: one finger up or down changes the slice, and
+// sideways moves the image. Two fingers always pinch to zoom and move the image.
 
 const pointers = new Map();  // pointerId -> { x, y, startX, startY, time }
 let twoFingers = false;      // this gesture used two fingers, so it is not a tap
 let lastTap = null;
+let drag = null;             // a one-finger drag: its start point and slice, and its direction
+let wheelSum = 0;            // small trackpad scrolls, added up until they make one slice
+const WHEEL_STEP = 50;       // trackpad wheel pixels per slice (see wheelSteps)
+const SLICE_KEYS = new Map([['ArrowUp', -1], ['ArrowDown', 1], ['PageUp', -5], ['PageDown', 5]]);
 
 function canvasPoint(event) {
   const box = el.canvas.getBoundingClientRect();
@@ -323,10 +529,35 @@ function pinch() {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) };
 }
 
+// A one-finger drag starts. On a stack its direction is not known yet (see lockAxis). After a
+// pinch, the finger left down only moves the image, so the zoomed slice stays on screen.
+function startDrag(p) {
+  drag = { x: p.x, y: p.y, slice: sliceIndex, axis: slices.length > 1 && !twoFingers ? null : 'pan' };
+}
+
+// On a stack, the first 10 CSS px of a drag fix its direction until the finger lifts: up or
+// down changes the slice, sideways moves the image. Returns false while it is not decided.
+function lockAxis(now) {
+  if (drag.axis) return true;
+  const dx = now.x - drag.x;
+  const dy = now.y - drag.y;
+  if (Math.hypot(dx, dy) < 10 * pixelRatio()) return false;
+  drag.axis = Math.abs(dy) >= Math.abs(dx) ? 'slice' : 'pan';
+  return true;
+}
+
+// The finger distance for one slice: the frame height spread over the stack (over 8 slices
+// for a short stack), and at least 4 CSS px. In canvas pixels, like the pointer positions.
+function sliceStep() {
+  const frameHeight = el.canvas.getBoundingClientRect().height;
+  return Math.max(4, frameHeight / Math.max(slices.length, 8)) * pixelRatio();
+}
+
 function onPointerDown(event) {
   if (!picture) return;
   const p = canvasPoint(event);
   pointers.set(event.pointerId, { ...p, startX: p.x, startY: p.y, time: event.timeStamp });
+  if (pointers.size === 1) startDrag(pointers.get(event.pointerId));
   if (pointers.size > 1) twoFingers = true;
   // Keep getting moves even when the finger leaves the canvas. Fails for synthetic events.
   try { el.canvas.setPointerCapture(event.pointerId); } catch { /* nothing to capture */ }
@@ -338,7 +569,21 @@ function onPointerMove(event) {
   if (!p) return;
   const now = canvasPoint(event);
   if (pointers.size === 1) {
-    panBy(now.x - p.x, now.y - p.y);
+    // While the direction is open nothing moves and p keeps its old place, so a sideways
+    // drag then moves the image the whole way at once. Drag down = next slice.
+    if (!lockAxis(now)) return;
+    if (drag.axis === 'slice') {
+      const target = drag.slice + Math.trunc((now.y - drag.y) / sliceStep());
+      const i = Math.min(slices.length - 1, Math.max(0, target));
+      // Past the first or last slice, count again from the finger, so a drag back responds at once.
+      if (i !== target) {
+        drag.slice = i;
+        drag.y = now.y;
+      }
+      showSlice(i);
+    } else {
+      panBy(now.x - p.x, now.y - p.y);
+    }
   } else if (pointers.size === 2) {
     // Pan with the midpoint of the two fingers and zoom with their distance.
     const before = pinch();
@@ -357,6 +602,7 @@ function onPointerEnd(event) {
   if (!p) return;
   pointers.delete(event.pointerId);
   if (event.type === 'pointerup' && isTap(p, event)) onTap(p, event.timeStamp);
+  if (pointers.size === 1) startDrag([...pointers.values()][0]);  // the finger left after a pinch
   if (pointers.size === 0) {
     twoFingers = false;
     el.canvas.classList.remove('is-dragging');
@@ -380,12 +626,45 @@ function onTap(p, time) {
   }
 }
 
+// A single image: the wheel zooms. A stack: the wheel changes the slice, and Ctrl (or Cmd)
+// plus the wheel zooms. A trackpad pinch arrives as Ctrl + wheel, so it zooms too.
 function onWheel(event) {
   if (!picture) return;
-  event.preventDefault();  // zoom the image, not scroll the page
+  event.preventDefault();  // change the image, not scroll the page
+  if (slices.length > 1 && !event.ctrlKey && !event.metaKey) {
+    const steps = wheelSteps(event);
+    if (steps) showSlice(sliceIndex + steps);
+    return;
+  }
   const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;  // lines, pages
   const p = canvasPoint(event);
   zoomAt(p.x, p.y, Math.exp(-event.deltaY * unit * 0.002));
+}
+
+// One slice per mouse-wheel notch. A notch is about 100 pixels (or 3 lines). A busy browser
+// may join several notches into one event, so a large event counts its notches. A trackpad
+// sends many small scrolls; those are added up, one slice per 50 pixels.
+function wheelSteps(event) {
+  const pixels = event.deltaY * (event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 100 : 1);
+  if (Math.abs(pixels) >= WHEEL_STEP) {
+    wheelSum = 0;
+    return Math.sign(pixels) * Math.max(1, Math.round(Math.abs(pixels) / 100));
+  }
+  wheelSum += pixels;
+  const steps = Math.trunc(wheelSum / WHEEL_STEP);
+  wheelSum -= steps * WHEEL_STEP;
+  return steps;
+}
+
+// A stack, with the frame focused (by Tab or a click on the image): the arrow keys step one
+// slice, Page Up and Page Down five, Home and End go to the first and the last slice.
+function onKey(event) {
+  if (slices.length < 2 || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.key === 'Home') showSlice(0);
+  else if (event.key === 'End') showSlice(slices.length - 1);
+  else if (SLICE_KEYS.has(event.key)) showSlice(sliceIndex + SLICE_KEYS.get(event.key));
+  else return;
+  event.preventDefault();  // the page does not scroll
 }
 
 el.canvas.addEventListener('pointerdown', onPointerDown);
@@ -393,6 +672,7 @@ el.canvas.addEventListener('pointermove', onPointerMove);
 el.canvas.addEventListener('pointerup', onPointerEnd);
 el.canvas.addEventListener('pointercancel', onPointerEnd);
 el.canvas.addEventListener('wheel', onWheel, { passive: false });
+el.frame.addEventListener('keydown', onKey);
 // No long-press menu (no "Save", "Share" or "Search image") and no iPhone page zoom.
 const block = (event) => event.preventDefault();
 for (const type of ['contextmenu', 'gesturestart', 'gesturechange', 'gestureend']) {
@@ -402,7 +682,7 @@ if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(el.frame);
 else window.addEventListener('resize', resizeCanvas);
 
 
-// ---- 5. Answer controls -------------------------------------------------------------------
+// ---- 6. Answer controls -------------------------------------------------------------------
 // Built from the server's JSON, so a study can change its choices or its scale.
 
 function fillChoices(fieldset, legend, items) {
@@ -442,7 +722,7 @@ function updateButtons() {
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 
-// ---- 6. The reading flow ------------------------------------------------------------------
+// ---- 7. The reading flow ------------------------------------------------------------------
 
 // Asks the server where the reader is, then shows that case. The server state always wins:
 // after a reload, or after the browser's Back button, the page shows what the server says.
@@ -464,14 +744,15 @@ async function loadCase() {
   aiBox = null;
 
   // Clear the last case first: a slow download must never show it under the new case number.
-  release(picture);
-  picture = null;
+  clearSlices();
   draw();
   showStatus('Loading image…');
-  picture = await pictureFor(data.image);
+  setSlices(await slicesFor(data.image));
   resizeCanvas();
   resetView();
-  startedAt = performance.now();  // the first read's time starts when the image shows
+  // The first read's time starts when the image shows. For a stack: when every slice is
+  // decoded and the middle slice is drawn.
+  startedAt = performance.now();
   showStatus('');
   el.first.hidden = false;
   prefetch((data.prefetch || [])[0]);
@@ -488,7 +769,15 @@ function showReveal(firstRead, ai) {
   el.aiConfidence.textContent = ai.confidence == null ? '' : `${Math.round(ai.confidence * 100)}% confidence`;
   el.aiSource.textContent = ai.source ? `Source: ${ai.source}` : '';
   aiBox = Array.isArray(ai.box) && ai.box.length === 4 ? ai.box.map(Number) : null;
-  el.aiMark.hidden = !aiBox;
+  aiRange = boxRange(ai.box_slices);
+  // A stack jumps to the middle of the box's slices. It does this for every suggestion with
+  // a box, so the jump gives nothing away (rule 6).
+  const boxOnStack = Boolean(aiBox) && slices.length > 1;
+  const [a, b] = aiRange.map((i) => i + 1);  // people count slices from 1
+  el.aiSlices.textContent = a === b ? `Box on slice ${a}` : `Box on slices ${a}–${b}`;
+  el.aiSlices.hidden = !boxOnStack;
+  markAiSlices();
+  if (boxOnStack) showSlice(middle(...aiRange));
   el.aiPanel.hidden = false;
   draw();
 
@@ -541,7 +830,7 @@ function scrollToViewer() {
 // replace, not assign: the reading page leaves the history, so Back from the done page
 // does not bounce the reader straight forward again.
 function finish() {
-  release(picture);
+  clearSlices();
   location.replace(DONE_URL);
 }
 

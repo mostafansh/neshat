@@ -82,13 +82,16 @@ def final_read(request, alias):
 
 @require_GET
 def case_image(request, alias):
-    """Pixels only: no file name, no date, and not kept in the browser's disk cache."""
+    """Pixels only: no file name, no date, and not kept in the browser's disk cache.
+    Content-Length lets the page show "1.2 of 2.9 MB" while a large stack loads."""
     if not request.user.is_authenticated:
         raise Http404
-    data = flow.image_bytes(request.user, alias, request.META.get("REMOTE_ADDR"))
-    if data is None:
+    found = flow.image_bytes(request.user, alias, request.META.get("REMOTE_ADDR"))
+    if found is None:
         raise Http404
-    return HttpResponse(data, content_type="image/png", headers={"Cache-Control": "private, no-store"})
+    data, content_type = found
+    headers = {"Cache-Control": "private, no-store", "Content-Length": str(len(data))}
+    return HttpResponse(data, content_type=content_type, headers=headers)
 
 
 def csrf_failure(request, reason=""):

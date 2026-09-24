@@ -13,6 +13,7 @@ exports/
 *.nii
 *.nii.gz
 *.nrrd
+*.stk
 *.png
 *.jpg
 *.jpeg
