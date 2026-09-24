@@ -13,3 +13,9 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+prep = [
+    "numpy>=2.5.3",
+    "pydicom>=3.0.2",
+]
