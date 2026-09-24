@@ -5,11 +5,13 @@
 {% block content %}
 <h1>Create an account</h1>
 <p class="lede">Choose a user name and a password. We ask for nothing else yet.</p>
+{% if site_mode == "venue" %}<p class="notice notice-warn">This Wi-Fi connection is not encrypted. Choose a new password that you use nowhere else.</p>{% endif %}
 <form method="post" class="stack">
   {% csrf_token %}
   <input type="hidden" name="next" value="{{ next }}">
   {{ form.as_div }}
   <button class="btn btn-primary btn-block" type="submit">Create account</button>
 </form>
-<p class="muted">Already have an account? <a href="{% url 'signin' %}">Sign in</a></p>
+<p class="muted">Already have an account?</p>
+<a class="btn" href="{% url 'signin' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Sign in</a>
 {% endblock %}

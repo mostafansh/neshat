@@ -156,7 +156,8 @@ MESSAGE_TAGS = {
     message_level.ERROR: "stop",
 }
 
-# Server errors and refused requests are written to data/errors.log in every mode.
+# Server errors (5xx) and refused requests (4xx, including "This page expired") are written
+# to data/errors.log in every mode. Django logs refusals as warnings, so the file takes those.
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -164,7 +165,7 @@ LOGGING = {
         "errors_file": {
             "class": "logging.FileHandler",
             "filename": DATA_DIR / "errors.log",
-            "level": "ERROR",
+            "level": "WARNING",
             "encoding": "utf-8",
             "delay": True,
         },
@@ -189,6 +190,9 @@ SECURE_CSP = {
     "form-action": [CSP.SELF],
 }
 X_FRAME_OPTIONS = "DENY"
+if SITE_MODE == "venue":
+    # Browsers ignore this header on plain HTTP and log a console error on every page.
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 SECURE_REFERRER_POLICY = "same-origin"
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"

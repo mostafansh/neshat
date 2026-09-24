@@ -102,7 +102,7 @@ def current_state(enrollment: Enrollment) -> dict:
 
 def _clean_answer(study: Study, body: dict) -> tuple[str, int, int | None]:
     answer = body.get("answer")
-    if answer not in study.choice_values():
+    if not isinstance(answer, str) or answer not in study.choice_values():
         raise FlowError("Choose one of the answers.")
     confidence = body.get("confidence")
     if not isinstance(confidence, int) or isinstance(confidence, bool) or not 1 <= confidence <= study.confidence_max:
@@ -113,14 +113,16 @@ def _clean_answer(study: Study, body: dict) -> tuple[str, int, int | None]:
     return answer, confidence, elapsed
 
 
-def _replayed(submission_id: str, presentation: Presentation, stage: str) -> bool:
+def _replayed(submission_id: str, presentation: Presentation, stage: str, body: dict) -> bool:
     """True when this exact answer was already stored (a retried send). Raises when the code
-    belongs to a different answer."""
+    belongs to another case, or when the stored answer differs (for example, a second tab)."""
     earlier = Read.objects.filter(client_submission_id=submission_id).first()
     if earlier is None:
         return False
     if earlier.presentation_id != presentation.pk or earlier.stage != stage:
         raise FlowError("This answer code belongs to another answer. Reload the page.", 409)
+    if (earlier.answer, earlier.confidence) != (body.get("answer"), body.get("confidence")):
+        raise FlowError("This case was already answered, maybe in another tab. Reload the page.", 409)
     return True
 
 
@@ -128,7 +130,7 @@ def record_first(presentation: Presentation, body: dict) -> dict:
     """Lock the unaided first read, then reveal the AI suggestion (rule 1)."""
     submission_id = body.get("submission_id")
     with transaction.atomic():
-        if not _replayed(submission_id, presentation, Read.Stage.FIRST):
+        if not _replayed(submission_id, presentation, Read.Stage.FIRST, body):
             if submission_id != presentation.first_submission_id:
                 raise FlowError("This answer code is not valid for this case. Reload the page.", 409)
             current = current_presentation(presentation.enrollment)
@@ -152,7 +154,7 @@ def record_final(presentation: Presentation, body: dict) -> dict:
     submission_id = body.get("submission_id")
     enrollment = presentation.enrollment
     with transaction.atomic():
-        if not _replayed(submission_id, presentation, Read.Stage.FINAL):
+        if not _replayed(submission_id, presentation, Read.Stage.FINAL, body):
             if submission_id != presentation.final_submission_id:
                 raise FlowError("This answer code is not valid for this case. Reload the page.", 409)
             if not presentation.reads.filter(stage=Read.Stage.FIRST).exists():

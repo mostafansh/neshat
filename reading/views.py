@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -37,12 +38,19 @@ def sign_up(request):
         return redirect("projects")
     form = SignUpForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        login(request, form.save())
-        next_url = request.POST.get("next", "")
-        if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
-            return redirect(next_url)
-        return redirect("projects")
-    return render(request, "accounts/signup.html", {"form": form, "next": request.GET.get("next", "")})
+        try:
+            user = form.save()
+        except IntegrityError:
+            # A double tap: the first tap created this user name a moment ago.
+            form.add_error("username", "This user name was just created. If it was you, sign in.")
+        else:
+            login(request, user)
+            next_url = request.POST.get("next", "")
+            if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+                return redirect(next_url)
+            return redirect("projects")
+    next_url = request.POST.get("next", "") if request.method == "POST" else request.GET.get("next", "")
+    return render(request, "accounts/signup.html", {"form": form, "next": next_url})
 
 
 def projects(request):

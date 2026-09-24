@@ -4,6 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
+from django.contrib.staticfiles import finders
 from django.db import IntegrityError, connection, transaction
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -117,6 +118,12 @@ class NoAIBeforeTheLockTests(ReadingTestCase):
         self.assertIsNone(state["ai"])
         self.assertEqual(state["stage"], "first")
 
+    def test_files_sent_to_every_browser_do_not_describe_the_design(self):
+        # The script and the stylesheet are public. Readers must not learn the trick from them.
+        for name in ("js/read.js", "css/reading-room.css"):
+            text = Path(finders.find(name)).read_text(encoding="utf-8").lower()
+            self.assertNotIn("planted", text, name)
+
     def test_the_lock_response_reveals_the_ai(self):
         self.join()
         _, response = self.lock_first()
@@ -135,6 +142,23 @@ class LockingTests(ReadingTestCase):
         again = self.post("api_first", state["presentation"], body)
         self.assertEqual(again.json(), first.json())
         self.assertEqual(Read.objects.filter(stage="first").count(), 1)
+
+    def test_a_retried_final_answer_is_stored_once_and_answered_the_same(self):
+        self.join()
+        state, first = self.lock_first()
+        body = {"submission_id": first.json()["submission_id"], "answer": "no", "confidence": 3}
+        once = self.post("api_final", state["presentation"], body)
+        again = self.post("api_final", state["presentation"], body)
+        self.assertEqual(again.json(), once.json())
+        self.assertEqual(Read.objects.filter(stage="final").count(), 1)
+
+    def test_the_same_code_with_another_answer_is_refused(self):
+        # For example a second tab: the page must not show an answer the server did not store.
+        self.join()
+        state, _ = self.lock_first(answer="yes", confidence=4)
+        body = {"submission_id": state["submission_id"], "answer": "no", "confidence": 1}
+        self.assertEqual(self.post("api_first", state["presentation"], body).status_code, 409)
+        self.assertEqual(list(Read.objects.values_list("answer", "confidence")), [("yes", 4)])
 
     def test_reload_after_the_lock_goes_to_the_final_answer(self):
         self.join()
@@ -168,7 +192,7 @@ class LockingTests(ReadingTestCase):
     def test_answers_outside_the_choices_are_refused(self):
         self.join()
         state = self.current()
-        for answer, confidence in [("maybe", 3), ("yes", 0), ("yes", 6), ("yes", "3"), ("yes", True)]:
+        for answer, confidence in [("maybe", 3), (["yes"], 3), ({}, 3), ("yes", 0), ("yes", 6), ("yes", "3"), ("yes", True)]:
             body = {"submission_id": state["submission_id"], "answer": answer, "confidence": confidence}
             response = self.post("api_first", state["presentation"], body)
             self.assertEqual(response.status_code, 400, (answer, confidence))

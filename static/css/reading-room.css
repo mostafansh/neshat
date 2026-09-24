@@ -61,7 +61,7 @@
   --warn:        #cba43a;  /* state: needs attention, not measured yet */
   --stop:        #d8685d;  /* state: refused, error */
   --you:         var(--accent);  /* the reader's own marks and answers */
-  --ai:          #a98bdb;  /* AI suggestions: one neutral violet, correct or planted */
+  --ai:          #a98bdb;  /* AI suggestions: one neutral violet, for every suggestion */
   --viewport:    #000;     /* behind medical images, in every theme */
 }
 
@@ -491,8 +491,8 @@ small { font-size: .875rem; }
 .pill-stop { color: var(--stop); }
 
 /* Marks an AI suggestion. The dashed edge matches dashed AI marks on the
-   image. There is exactly one AI style: a correct and a planted suggestion
-   must look the same. Never add a variant. */
+   image. There is exactly one AI style, used for every suggestion.
+   Never add a variant. */
 .badge-ai {
   display: inline-flex;
   align-items: center;
@@ -832,6 +832,45 @@ input[type="file"] { max-inline-size: 100%; }
    READING SCREEN (templates/reading/read.html and static/js/read.js)
    ========================================================================== */
 
+/* Two parts: the viewer (case number, image, status) and the panel (answers,
+   AI suggestion). The image stays in view; only the panel scrolls.
+   On a phone the viewer sticks to the top of the screen and the panel
+   scrolls under it. On a wide screen the viewer sits on the start side and
+   the panel scrolls beside it.
+   The viewer must not be a grid item on a phone: a sticky grid item cannot
+   leave its own grid row, so it would scroll away. */
+.reader-view {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;  /* the panel scrolls under the image, never over it */
+  padding-block: .5rem;
+  background: var(--ground);
+}
+.reader-view > * + * { margin-block-start: .5rem; }
+.reader-panel { margin-block-start: .5rem; }
+
+/* Room for the answers under the image. svh (the small viewport height) does
+   not change when a phone hides its address bar, so the image does not
+   resize while the reader scrolls. The vh line is for older browsers. */
+.reader-view .frame {
+  max-height: 55vh;
+  max-height: 55svh;
+}
+
+@media (min-width: 48rem) {
+  .reader {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(17rem, 2fr);
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+  .reader-panel { margin-block-start: 0; padding-block-start: .5rem; }
+  .reader-view .frame {
+    max-height: calc(100vh - 6rem);
+    max-height: calc(100svh - 6rem);
+  }
+}
+
 /* The script handles drag, pinch and wheel on the image itself. touch-action:
    none stops the browser from scrolling or zooming the page when a finger
    moves on the image. The page still scrolls from outside the frame. */
@@ -842,8 +881,8 @@ input[type="file"] { max-inline-size: 100%; }
 .frame > canvas.pan-zoom.is-dragging { cursor: grabbing; }
 
 /* The AI suggestion. The dashed --ai edge matches the dashed AI mark on the
-   image and .badge-ai: the one AI style. A correct and a planted suggestion
-   look the same. Never add a variant. */
+   image and .badge-ai: the one AI style, used for every suggestion.
+   Never add a variant. */
 .ai-panel {
   max-inline-size: 65ch;
   padding-block: .75rem;

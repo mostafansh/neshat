@@ -56,6 +56,8 @@ A **theme** is a set of token values. A theme changes values only, never a compo
   Never add a second AI style.
 - Give every mark a thin black outline (`--viewport`), so it shows on bone and on air.
 - The reading screen reads mark colours from the frame, not from the page.
+- On the reading screen the image stays in view: on a phone it sticks to the top of the
+  screen and the answers scroll under it; on a wide screen the answers scroll beside it.
 
 ## Page shell
 

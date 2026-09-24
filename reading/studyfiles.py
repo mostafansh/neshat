@@ -46,6 +46,10 @@ def read_design(folder: Path) -> tuple[dict, list[dict]]:
         design = json.loads((folder / "study.json").read_text(encoding="utf-8"))
     except FileNotFoundError:
         raise StudyFileError(f"No study.json in {folder}.")
+    except ValueError as problem:
+        raise StudyFileError(f"study.json is not valid JSON: {problem}")
+    if not isinstance(design, dict):
+        raise StudyFileError("study.json must be one object: { \"key\": ..., \"title\": ..., ... }.")
     unknown = set(design) - STUDY_FIELDS
     if unknown:
         raise StudyFileError(f"study.json has unknown fields: {', '.join(sorted(unknown))}.")
@@ -56,13 +60,17 @@ def read_design(folder: Path) -> tuple[dict, list[dict]]:
         raise StudyFileError("The study key may use only a-z, 0-9 and '-' (3 to 50 characters).")
     for field in ("title", "description", "question", "ai_source"):
         _no_identifiers(f"study.json {field}", str(design.get(field, "")))
-    values = [c.get("value") for c in design["choices"]]
-    if len(values) < 2 or len(set(values)) != len(values) or not all(c.get("label") for c in design["choices"]):
+    choices = design["choices"]
+    values = [c.get("value") for c in choices] if isinstance(choices, list) and all(isinstance(c, dict) for c in choices) else []
+    if len(values) < 2 or len(set(values)) != len(values) or not all(c.get("label") for c in choices):
         raise StudyFileError("study.json 'choices' needs at least 2 entries, each with a unique value and a label.")
+    scale = design.get("confidence_max", 5)
+    if type(scale) is not int or not 2 <= scale <= 10:  # type(), because True counts as an int
+        raise StudyFileError("study.json 'confidence_max' must be a whole number from 2 to 10.")
 
     try:
         with (folder / "cases.csv").open(encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle)
+            reader = csv.DictReader(handle, restval="")  # a short row gets empty fields, not None
             if reader.fieldnames != CASE_COLUMNS:
                 raise StudyFileError(f"cases.csv columns must be exactly: {','.join(CASE_COLUMNS)}")
             rows = list(reader)
@@ -79,6 +87,8 @@ def check_cases(design: dict, rows: list[dict], folder: Path) -> list[dict]:
     cases = []
     for number, row in enumerate(rows, start=2):  # line 1 is the header
         where = f"cases.csv line {number}"
+        if None in row:
+            raise StudyFileError(f"{where} has more fields than the header.")
         try:
             position = int(row["position"])
             confidence = float(row["ai_confidence"])
@@ -122,6 +132,14 @@ def check_cases(design: dict, rows: list[dict], folder: Path) -> list[dict]:
             raise StudyFileError(
                 f"Case {case['position']}: a planted suggestion's confidence ({case['ai_confidence']}) lies outside "
                 f"the range of the correct ones ({min(correct)}-{max(correct)}). Readers could spot it."
+            )
+    # Rule 6: the AI box must not give planted suggestions away either. Every suggestion with
+    # the same answer has a box, or none has.
+    for answer in answers:
+        if len({bool(c["ai_box"]) for c in cases if c["ai_answer"] == answer}) > 1:
+            raise StudyFileError(
+                f"Some '{answer}' AI suggestions have an ai_box and others do not. Readers could spot the "
+                "planted ones. Give all of them a box, or none."
             )
     return sorted(cases, key=lambda c: c["position"])
 
@@ -173,11 +191,11 @@ def load(folder: Path, open_now: bool = False) -> Study:
         study = Study.objects.create(
             key=design["key"],
             title=design["title"],
-            description=design.get("description", ""),
+            description=design.get("description") or "",
             question=design["question"],
             choices=design["choices"],
             confidence_max=int(design.get("confidence_max", 5)),
-            ai_source=design.get("ai_source", "AI model (simulated)"),
+            ai_source=design.get("ai_source") or "AI model (simulated)",
             design_sha256=digest.hexdigest(),
         )
         if media_dir.exists():

@@ -5,7 +5,7 @@
 // Rules this file keeps (see CLAUDE.md):
 // - The page never knows the AI suggestion before the server has stored the first read. It
 //   arrives only in the answer to "Lock my read" (rule 1).
-// - Every AI suggestion is drawn the same way. The page cannot tell a planted one (rule 6).
+// - Every AI suggestion is drawn the same way, with no variant (rule 6).
 // - The venue is plain HTTP, so no crypto.randomUUID, crypto.subtle, clipboard, wake lock or
 //   service worker. Nothing is loaded from another server (rule 7).
 // - The image address never goes into the page. The bytes are drawn on a canvas, so a long
@@ -14,12 +14,13 @@
 const reader = document.getElementById('reader');
 const API = reader.dataset.api;            // for example "/api/s/wrist-fracture/"
 const DONE_URL = reader.dataset.doneUrl;   // the "all cases finished" page
-const MAX_ZOOM = 8;
+const MAX_ZOOM = 8;         // times the fit size; large images may go further (see zoomAt)
+const MAX_PIXEL_SIZE = 4;   // at most zoom, one image pixel may cover at least 4 x 4 screen pixels
 
 const $ = (id) => document.getElementById(id);
 const el = {
   progress: $('progress'), frame: $('frame'), canvas: $('view'), aiMark: $('ai-mark'),
-  status: $('status'), first: $('first'), locked: $('locked'), lock: $('lock'),
+  status: $('status'), first: $('first'), lock: $('lock'),
   firstAnswer: $('first-answer'), firstConfidence: $('first-confidence'),
   aiPanel: $('ai-panel'), aiLabel: $('ai-label'), aiConfidence: $('ai-confidence'),
   aiSource: $('ai-source'), final: $('final'), submitFinal: $('submit-final'),
@@ -53,13 +54,16 @@ function csrfToken() {
 // Sends one request and reads its body. Venue Wi-Fi drops out, so a network error, a
 // time-out or a 5xx answer is retried after 1, 2, 4, 8, 15, 15... seconds. The retry sends
 // the exact same request, with the same submission_id, so the server stores the answer once.
+// Each retry allows twice as long (up to 4 minutes), so a slow but working link can still
+// finish a large image: a new try starts the download from zero.
 async function request(url, options, readBody, timeoutMs = 20000) {
   let wait = 1000;
   for (;;) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let res = null;
     try {
-      const res = await fetch(url, { ...options, credentials: 'same-origin', signal: controller.signal });
+      res = await fetch(url, { ...options, credentials: 'same-origin', signal: controller.signal });
       if (res.status < 500) {
         if (!res.ok) throw new Refused(await refusalText(res));
         const body = await readBody(res);
@@ -72,9 +76,13 @@ async function request(url, options, readBody, timeoutMs = 20000) {
     } finally {
       clearTimeout(timer);
     }
-    showStatus('Connection lost. Trying again…', 'warn');
+    // A 5xx answer means the connection works but the server failed: say so, so nobody
+    // looks for the fault in the Wi-Fi. data/errors.log on the laptop has the details.
+    const serverFault = res && res.status >= 500;
+    showStatus(serverFault ? 'The server had a problem. Trying again…' : 'Connection lost. Trying again…', 'warn');
     await sleep(wait);
     wait = Math.min(wait * 2, 15000);
+    timeoutMs = Math.min(timeoutMs * 2, 240000);
   }
 }
 
@@ -150,7 +158,7 @@ function prefetch(url) {
   upcoming = null;
   if (!url) return;
   const controller = new AbortController();
-  setTimeout(() => controller.abort(), 30000);  // a stalled download must not block the next case
+  setTimeout(() => controller.abort(), 60000);  // a stalled download must not block the next case
   const promise = fetch(url, { credentials: 'same-origin', signal: controller.signal })
     .then((res) => { if (!res.ok) throw new Error(`prefetch ${res.status}`); return res.blob(); })
     .then(decode);
@@ -176,7 +184,7 @@ async function pictureFor(url) {
 // transform as the image, so it stays on the same spot at every zoom and pan.
 
 const ctx = el.canvas.getContext('2d');
-const view = { fit: 1, zoom: 1, x: 0, y: 0 };  // fit: whole image in the frame; zoom: 1 to 8
+const view = { fit: 1, zoom: 1, x: 0, y: 0 };  // fit: whole image in the frame; zoom: 1 or more
 let aiBox = null;                               // [x, y, width, height] in image pixels
 let drawPending = false;
 
@@ -210,10 +218,13 @@ function clampAxis(offset, room, size) {
   return Math.min(0, Math.max(room - size, offset));
 }
 
-// Zooms by `factor` and keeps the image point under (px, py) in the same place.
+// Zooms by `factor` and keeps the image point under (px, py) in the same place. The limit
+// is 8 times the fit size, or more for a large image: a full-size radiograph (2000-3000 px
+// wide) must still zoom until one image pixel covers 4 x 4 screen pixels.
 function zoomAt(px, py, factor) {
   const anchor = toImage(px, py);
-  view.zoom = Math.min(MAX_ZOOM, Math.max(1, view.zoom * factor));
+  const maxZoom = Math.max(MAX_ZOOM, MAX_PIXEL_SIZE * pixelRatio() / view.fit);
+  view.zoom = Math.min(maxZoom, Math.max(1, view.zoom * factor));
   view.x = px - anchor.x * scale();
   view.y = py - anchor.y * scale();
   clampView();
@@ -438,14 +449,15 @@ async function loadCase() {
   fillChoices(el.firstConfidence, scaleLegend, scaleItems);
   fillChoices(el.finalAnswer, data.question, choices);
   fillChoices(el.finalConfidence, scaleLegend, scaleItems);
-  for (const part of [el.first, el.aiPanel, el.final, el.locked, el.aiMark]) part.hidden = true;
-  el.lock.hidden = false;
+  for (const part of [el.first, el.aiPanel, el.final, el.aiMark]) part.hidden = true;
   aiBox = null;
 
+  // Clear the last case first: a slow download must never show it under the new case number.
+  release(picture);
+  picture = null;
+  draw();
   showStatus('Loading image…');
-  const pic = await pictureFor(data.image);
-  if (picture && picture !== pic) release(picture);
-  picture = pic;
+  picture = await pictureFor(data.image);
   resizeCanvas();
   resetView();
   startedAt = performance.now();  // the first read's time starts when the image shows
@@ -457,13 +469,9 @@ async function loadCase() {
   if (data.stage === 'final') showReveal(data.first_read, data.ai);
 }
 
-// Shows the locked first read, the AI suggestion and the final-answer controls.
+// Hides the locked first read, then shows the AI suggestion and the final-answer controls.
 function showReveal(firstRead, ai) {
-  setChecked(el.firstAnswer, firstRead.answer);
-  setChecked(el.firstConfidence, firstRead.confidence);
-  lockInputs(el.firstAnswer, el.firstConfidence);
-  el.locked.hidden = false;
-  el.lock.hidden = true;
+  el.first.hidden = true;
 
   el.aiLabel.textContent = ai.label;
   el.aiConfidence.textContent = ai.confidence == null ? '' : `${Math.round(ai.confidence * 100)}% confidence`;
@@ -491,9 +499,10 @@ async function lockFirst() {
   showStatus('Saving your first read…');
   const data = await postJson(`/api/p/${encodeURIComponent(task.presentation)}/first`, body);
   submissionId = data.submission_id;  // the new code for the final read
-  showStatus('Your first read is locked. The AI suggestion is below.');
+  showStatus('');
   showReveal(body, data.ai);
-  el.aiPanel.scrollIntoView({ block: 'nearest' });
+  scrollToViewer();
+  el.aiPanel.focus({ preventScroll: true });  // the Lock button is gone; keep keyboard focus nearby
 }
 
 async function sendFinal() {
@@ -507,8 +516,15 @@ async function sendFinal() {
   showStatus('Saving your final answer…');
   const data = await postJson(`/api/p/${encodeURIComponent(task.presentation)}/final`, body);
   if (!data.next) return finish();
-  window.scrollTo(0, 0);
+  scrollToViewer();
   await loadCase();
+}
+
+// Scrolls up until the image sits at the top of the screen, with the panel right under it.
+// Never scrolls down: a reader who is already higher up keeps the page title in view.
+function scrollToViewer() {
+  const top = reader.getBoundingClientRect().top + window.scrollY;
+  if (window.scrollY > top) window.scrollTo(0, top);
 }
 
 // replace, not assign: the reading page leaves the history, so Back from the done page

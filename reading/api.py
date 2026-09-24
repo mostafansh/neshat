@@ -38,7 +38,7 @@ def own_presentation(request, alias: str) -> Presentation | None:
 def json_body(request) -> dict:
     try:
         body = json.loads(request.body)
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, RecursionError):  # RecursionError: a body nested thousands deep
         raise flow.FlowError("The answer could not be read. Reload the page.")
     if not isinstance(body, dict):
         raise flow.FlowError("The answer could not be read. Reload the page.")

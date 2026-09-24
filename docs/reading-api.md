@@ -85,14 +85,16 @@ Response 200:
 - `box` is `null` or `[x, y, width, height]` in image pixels (the image's own size, not the
   screen). The page draws it on the image in the `--ai` colour, dashed.
 - `submission_id` is the new code for the final read.
-- Sending the same `submission_id` again returns the same response (safe retry).
+- Sending the same `submission_id` again with the same answer and confidence returns the same
+  response (safe retry). The same code with a different answer (for example from a second tab)
+  returns 409, and nothing stored changes.
 
 ### POST `/api/p/<alias>/final`
 
 Body: `{"submission_id": "...", "answer": "yes", "confidence": 3, "elapsed_ms": 4410}`
 
 Response 200: `{"next": true}` (another case waits) or `{"next": false}` (study finished).
-The same `submission_id` sent again returns the same response.
+The same `submission_id` sent again returns the same response; with a different answer, 409.
 
 ### GET `/i/<alias>/`
 
@@ -105,5 +107,11 @@ press offers no "Download image".
 - Plain JavaScript, one ES module, no build step, no libraries.
 - No `crypto.randomUUID`, `crypto.subtle`, clipboard, wake lock or service workers: the venue
   is plain HTTP.
-- No back button and no way to change a locked read.
+- No back button and no way to change a locked read. After the lock, the first-read controls
+  disappear; the final answer starts on the first answer.
+- The image stays in view while the answers scroll (sticky on a phone, side by side on a wide
+  screen).
+- A network error, a time-out or a 5xx is retried with the same body. Each retry allows twice
+  as long, up to 4 minutes, so a large image still arrives over a slow link. A 4xx stops the
+  page with the server's sentence and a "Reload the page" button.
 - Nothing from another server.

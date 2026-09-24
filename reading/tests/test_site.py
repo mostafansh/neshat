@@ -10,6 +10,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
+from reading.models import User
+
 
 class HomePageTests(TestCase):
     def test_home_page_uses_the_reading_room_style(self):
@@ -27,6 +29,21 @@ class HomePageTests(TestCase):
     def test_style_and_brand_files_exist(self):
         self.assertIsNotNone(finders.find("css/reading-room.css"))
         self.assertIsNotNone(finders.find("img/brand.svg"))
+
+
+class AccountTests(TestCase):
+    password = "a long test passphrase"
+
+    def sign_up(self, **extra):
+        data = {"username": "reader1", "password1": self.password, "password2": self.password, **extra}
+        return self.client.post(reverse("signup"), data)
+
+    def test_sign_up_signs_the_reader_in(self):
+        self.assertRedirects(self.sign_up(), reverse("projects"))
+        self.assertEqual(self.client.session["_auth_user_id"], str(User.objects.get(username="reader1").pk))
+
+    def test_sign_up_never_sends_the_reader_to_another_site(self):
+        self.assertRedirects(self.sign_up(next="https://example.com/"), reverse("projects"))
 
 
 class SecurityHeaderTests(TestCase):
@@ -99,8 +116,8 @@ class VenueAdminGuardTests(TestCase):
 class ModeSettingsTests(TestCase):
     """Each mode must fail safe. Settings are read once per process, so check in a new one."""
 
-    def load_settings(self, **env):
-        code = "import config.settings as s; print(s.ALLOWED_HOSTS, s.DEBUG)"
+    def load_settings(self, show="s.ALLOWED_HOSTS, s.DEBUG", **env):
+        code = f"import config.settings as s; print({show})"
         with tempfile.TemporaryDirectory() as data_dir:
             return subprocess.run(
                 [sys.executable, "-c", code],
@@ -122,3 +139,8 @@ class ModeSettingsTests(TestCase):
     def test_online_mode_strips_spaces_from_host_names(self):
         result = self.load_settings(NESHAT_MODE="online", NESHAT_HOSTS="a.ir, www.a.ir")
         self.assertEqual(result.stdout.strip(), "['a.ir', 'www.a.ir'] False")
+
+    def test_venue_mode_sends_no_header_that_plain_http_ignores(self):
+        # Browsers log a console error for Cross-Origin-Opener-Policy on plain HTTP.
+        result = self.load_settings("s.DEBUG, s.SECURE_CROSS_ORIGIN_OPENER_POLICY", NESHAT_MODE="venue")
+        self.assertEqual(result.stdout.strip(), "False None")

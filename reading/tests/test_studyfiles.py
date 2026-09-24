@@ -73,6 +73,8 @@ class LoadStudyTests(TestCase):
     def test_problems_refuse_the_whole_study(self):
         planted_too_confident = [row[:] for row in ROWS]
         planted_too_confident[2][4] = 0.97
+        planted_without_box = [row[:] for row in ROWS]
+        planted_without_box[2][5] = ""  # the correct 'yes' has a box, the planted 'yes' has none
         cases = {
             "an extra column": dict(header=["position", "image", "truth", "ai_answer", "ai_confidence", "ai_box", "patient_id"]),
             "an unknown answer": dict(rows=[[1, "a.png", "maybe", "yes", 0.9, ""]]),
@@ -81,6 +83,10 @@ class LoadStudyTests(TestCase):
             "an image outside the folder": dict(rows=[[1, "../x.png", "yes", "yes", 0.9, ""]]),
             "a box outside the image": dict(rows=[[1, "a.png", "yes", "yes", 0.9, "5 5 50 50"]]),
             "a planted confidence that stands out": dict(rows=planted_too_confident),
+            "a planted suggestion that alone has no box": dict(rows=planted_without_box),
+            "a confidence scale of 0": dict(design={**DESIGN, "confidence_max": 0}),
+            "choices written as plain words": dict(design={**DESIGN, "choices": ["yes", "no"]}),
+            "a row longer than the header": dict(rows=[[1, "a.png", "yes", "yes", 0.9, "", "extra"]]),
         }
         for problem, kwargs in cases.items():
             with self.subTest(problem):
@@ -94,3 +100,8 @@ class LoadStudyTests(TestCase):
         load(self.folder, open_now=True)
         with self.assertRaises(StudyFileError):
             load(self.folder)
+
+    def test_a_row_without_the_empty_last_field_loads(self):
+        # "2,b.png,no,no,0.85" with no trailing comma: the empty ai_box is simply left out.
+        self.write(rows=[ROWS[0], ROWS[1][:5], ROWS[2]])
+        self.assertIsNone(load(self.folder).cases.get(position=2).ai_box)

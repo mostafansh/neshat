@@ -39,9 +39,23 @@ Use this for checkpoints with radiologists and at the workshop.
    when Windows asks.
 
 Admin pages (`/admin/`) answer only the laptop itself in venue mode:
-http://127.0.0.1:8080/admin/. The Wi-Fi is plain HTTP, so never type a password on a phone.
+http://127.0.0.1:8080/admin/. The Wi-Fi is plain HTTP, so never type the admin password on a
+phone. Readers type their own password on their phones to sign up; the sign-up and sign-in
+pages warn them to choose a new password that they use nowhere else.
 
-Stop the server with Ctrl+C.
+Stop the server with Ctrl+C. After a code update (`git pull`), stop and start it again: in
+venue mode the server reads the page templates and the style and script files once, at start.
+
+### The practice study
+
+The practice study has 8 synthetic cases (drawn by code, no patients). Load it once:
+
+```powershell
+uv run python manage.py make_synthetic_study
+```
+
+If it already exists, the command stops and says so. `--replace` deletes the practice study
+**and every answer given to it**, then makes it again.
 
 ## 3. The online server (online)
 
@@ -64,4 +78,7 @@ Not set up yet. When the server exists, it needs:
 
 ## Where to look when something breaks
 
-`data/errors.log` records server errors and refused requests in every mode.
+`data/errors.log` records server errors (5xx) and refused requests (4xx, for example "This
+page expired") in every mode. A phone that says "The server had a problem" means an entry is
+there. A phone that says "Connection lost" means the request did not reach the server: check
+the Wi-Fi.
