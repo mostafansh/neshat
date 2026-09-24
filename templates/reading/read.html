@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ study.title }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+{# The reading screen. static/js/read.js fills and drives it; docs/reading-api.md is the  #}
+{# contract. Every section after the image starts hidden: the script shows each one when #}
+{# the server says it is time. The AI suggestion is never in this HTML (CLAUDE.md rule 1). #}
+<h1>{{ study.title }}</h1>
+
+<div id="reader" class="stack" data-api="{{ api_base }}" data-done-url="{% url 'study_done' study.key %}">
+  {# Sets the csrftoken cookie that every POST sends back (and is the fallback if the cookie is missing). #}
+  {% csrf_token %}
+
+  <p id="progress" class="muted num">Loading case…</p>
+
+  {# One canvas, never an <img>: a long press on an <img> offers "Download image". #}
+  <div id="frame" class="frame">
+    <canvas id="view" class="pan-zoom" role="img"
+            aria-label="Case image. Drag to move. Pinch or scroll to zoom. Double-tap to reset.">Case image</canvas>
+    <span id="ai-mark" class="badge-ai" hidden>AI</span>
+  </div>
+  <p class="muted"><small>Pinch or scroll to zoom. Drag to move. Double-tap to reset.</small></p>
+
+  {# Connection and error messages. Screen readers announce changes here. #}
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <section id="first" class="stack" aria-labelledby="first-heading" hidden>
+    <h2 id="first-heading">Your first read <span id="locked" class="pill" hidden>Locked</span></h2>
+    <fieldset id="first-answer" class="choice-list">
+      <legend>{{ study.question }}</legend>
+    </fieldset>
+    <fieldset id="first-confidence" class="choice-list choice-row">
+      <legend>Confidence</legend>
+    </fieldset>
+    <button id="lock" type="button" class="btn btn-primary btn-block" disabled>Lock my read</button>
+  </section>
+
+  <section id="ai-panel" class="ai-panel stack" aria-labelledby="ai-heading" hidden>
+    <h2 id="ai-heading"><span class="badge-ai">AI suggestion</span></h2>
+    <p><strong id="ai-label"></strong> <span id="ai-confidence" class="num"></span></p>
+    <p id="ai-source" class="muted"></p>
+  </section>
+
+  <section id="final" class="stack" aria-labelledby="final-heading" hidden>
+    <h2 id="final-heading">Your final answer</h2>
+    <p class="muted">Keep your first answer or change it. Then rate your confidence again.</p>
+    <fieldset id="final-answer" class="choice-list">
+      <legend>{{ study.question }}</legend>
+    </fieldset>
+    <fieldset id="final-confidence" class="choice-list choice-row">
+      <legend>Confidence</legend>
+    </fieldset>
+    <button id="submit-final" type="button" class="btn btn-primary btn-block" disabled>Submit final answer</button>
+  </section>
+
+  <p id="reload-row" hidden><button id="reload" type="button" class="btn">Reload the page</button></p>
+
+  <noscript><p class="notice notice-stop">This reading screen needs JavaScript. Turn it on, then reload the page.</p></noscript>
+</div>
+
+<script type="module" src="{% static 'js/read.js' %}"></script>
+{% endblock %}

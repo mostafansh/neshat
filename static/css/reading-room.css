@@ -826,3 +826,29 @@ input[type="file"] { max-inline-size: 100%; }
     scroll-behavior: auto !important;
   }
 }
+
+
+/* ==========================================================================
+   READING SCREEN (templates/reading/read.html and static/js/read.js)
+   ========================================================================== */
+
+/* The script handles drag, pinch and wheel on the image itself. touch-action:
+   none stops the browser from scrolling or zooming the page when a finger
+   moves on the image. The page still scrolls from outside the frame. */
+.frame > canvas.pan-zoom {
+  touch-action: none;
+  cursor: grab;
+}
+.frame > canvas.pan-zoom.is-dragging { cursor: grabbing; }
+
+/* The AI suggestion. The dashed --ai edge matches the dashed AI mark on the
+   image and .badge-ai: the one AI style. A correct and a planted suggestion
+   look the same. Never add a variant. */
+.ai-panel {
+  max-inline-size: 65ch;
+  padding-block: .75rem;
+  padding-inline: 1rem;
+  background: var(--raised);
+  border: 1px dashed var(--ai);
+  border-radius: var(--radius);
+}
