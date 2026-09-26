@@ -28,8 +28,8 @@ if SITE_MODE not in {"dev", "venue", "online"}:
 
 DEBUG = SITE_MODE == "dev"
 
-# The product name is not decided yet. Change it here (or with NESHAT_SITE_NAME) when it is.
-SITE_NAME = os.environ.get("NESHAT_SITE_NAME", "[Product name]")
+# The product name (owner's decision, 2026-09-26). NESHAT_SITE_NAME can override it.
+SITE_NAME = os.environ.get("NESHAT_SITE_NAME", "AutoClave")
 
 
 def _secret_key() -> str:

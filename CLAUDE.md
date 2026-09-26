@@ -1,4 +1,4 @@
-# [Product name]: radiology reader-study and curation site
+# AutoClave: radiology reader-study and curation site
 
 An online site where radiologists join dataset-curation research projects. They read cases in
 the browser. The study design is built in: a blinded first read, the AI reveal (some

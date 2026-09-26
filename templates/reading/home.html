@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Bring your expertise.</h1>
-<p class="lede">We bring the data and the idea. You take part in research with very little to
-learn outside radiology.</p>
+<h1 class="visually-hidden">{{ site_name }}</h1>  {# no visible headline for now; screen readers still get one #}
 
 <div class="btn-row">
   <a class="btn btn-primary" href="{% url 'projects' %}">See the projects</a>
