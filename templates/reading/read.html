@@ -15,7 +15,11 @@
 
   {# The viewer stays in view while the reader scrolls the panel (sticky, see the CSS). #}
   <div class="reader-view">
-    <p id="progress" class="muted num">Loading case…</p>
+    {# "Case 7 of 24" and a thin progress line. read.js fills both. #}
+    <div class="case-progress">
+      <span id="progress">Loading case…</span>
+      <span class="track" aria-hidden="true"><span id="progress-bar"></span></span>
+    </div>
 
     {# One canvas, never an <img>: a long press on an <img> offers "Download image". #}
     <div id="frame" class="frame">
@@ -44,10 +48,17 @@
       <button id="lock" type="button" class="btn btn-primary btn-block" disabled>Lock my read</button>
     </section>
 
+    {# Shown with the AI suggestion: the reader's own locked first read, as plain text. #}
+    <div id="locked" class="notice notice-info" hidden>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+      <p>Your first read is locked: <strong id="locked-answer"></strong>, confidence <span id="locked-confidence"></span>.</p>
+    </div>
+
+    {# The score stays at text size (rule 6): a loud score would pull the reader toward the AI. #}
     <section id="ai-panel" class="ai-panel stack" aria-labelledby="ai-heading" tabindex="-1" hidden>
       <h2 id="ai-heading"><span class="badge-ai">AI suggestion</span></h2>
-      <p><strong id="ai-label"></strong> <span id="ai-confidence" class="num"></span></p>
-      <p id="ai-source" class="muted"></p>
+      <div class="ai-verdict"><strong id="ai-label"></strong><span id="ai-confidence" class="ai-score"></span></div>
+      <p class="muted"><small id="ai-source"></small></p>
     </section>
 
     <section id="final" class="stack" aria-labelledby="final-heading" hidden>

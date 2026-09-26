@@ -19,9 +19,10 @@ const MAX_PIXEL_SIZE = 4;   // at most zoom, one image pixel may cover at least 
 
 const $ = (id) => document.getElementById(id);
 const el = {
-  progress: $('progress'), frame: $('frame'), canvas: $('view'), aiMark: $('ai-mark'),
+  progress: $('progress'), progressBar: $('progress-bar'), frame: $('frame'), canvas: $('view'), aiMark: $('ai-mark'),
   status: $('status'), first: $('first'), lock: $('lock'),
   firstAnswer: $('first-answer'), firstConfidence: $('first-confidence'),
+  locked: $('locked'), lockedAnswer: $('locked-answer'), lockedConfidence: $('locked-confidence'),
   aiPanel: $('ai-panel'), aiLabel: $('ai-label'), aiConfidence: $('ai-confidence'),
   aiSource: $('ai-source'), final: $('final'), submitFinal: $('submit-final'),
   finalAnswer: $('final-answer'), finalConfidence: $('final-confidence'),
@@ -451,7 +452,10 @@ async function loadCase() {
   if (data.state === 'done') return finish();
   task = data;
   submissionId = data.submission_id;
-  el.progress.textContent = `Case ${data.position} of ${data.total}`;
+  const position = document.createElement('b');
+  position.textContent = data.position;
+  el.progress.replaceChildren('Case ', position, ` of ${data.total}`);
+  el.progressBar.style.width = `${Math.round((100 * data.position) / data.total)}%`;
 
   const choices = data.choices.map((c) => [c.value, c.label]);
   const scaleItems = Array.from({ length: data.confidence_max }, (_, i) => [i + 1, String(i + 1)]);
@@ -460,7 +464,7 @@ async function loadCase() {
   fillChoices(el.firstConfidence, scaleLegend, scaleItems);
   fillChoices(el.finalAnswer, data.question, choices);
   fillChoices(el.finalConfidence, scaleLegend, scaleItems);
-  for (const part of [el.first, el.aiPanel, el.final, el.aiMark]) part.hidden = true;
+  for (const part of [el.first, el.locked, el.aiPanel, el.final, el.aiMark]) part.hidden = true;
   aiBox = null;
 
   // Clear the last case first: a slow download must never show it under the new case number.
@@ -480,12 +484,17 @@ async function loadCase() {
   if (data.stage === 'final') showReveal(data.first_read, data.ai);
 }
 
-// Hides the locked first read, then shows the AI suggestion and the final-answer controls.
+// Hides the first-read controls, then shows the locked first read as text, the AI suggestion
+// and the final-answer controls.
 function showReveal(firstRead, ai) {
   el.first.hidden = true;
+  const choice = task.choices.find((c) => String(c.value) === String(firstRead.answer));
+  el.lockedAnswer.textContent = choice ? choice.label : firstRead.answer;
+  el.lockedConfidence.textContent = firstRead.confidence;
+  el.locked.hidden = false;
 
   el.aiLabel.textContent = ai.label;
-  el.aiConfidence.textContent = ai.confidence == null ? '' : `${Math.round(ai.confidence * 100)}% confidence`;
+  el.aiConfidence.textContent = ai.confidence == null ? '' : `${Math.round(ai.confidence * 100)}%`;
   el.aiSource.textContent = ai.source ? `Source: ${ai.source}` : '';
   aiBox = Array.isArray(ai.box) && ai.box.length === 4 ? ai.box.map(Number) : null;
   el.aiMark.hidden = !aiBox;

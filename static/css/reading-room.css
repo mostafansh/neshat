@@ -4,7 +4,8 @@
    The written standard is docs/style.md. Ported from the old project's
    base.html (mostafansh/interface@b6adb6d), then changed for medical images,
    a small JavaScript reading screen, phones, Persian (RTL) text and three
-   themes.
+   themes. The "lightbox" palette and type came from the Claude Design canvas
+   the owner approved on 2026-09-26.
 
    Four rules for anyone who edits this file:
    1. Every colour is a token (a custom property) in the TOKENS section.
@@ -18,11 +19,36 @@
    ========================================================================== */
 
 
-/* ---- Font slot (empty on purpose) -----------------------------------------
-   No web font is loaded yet. Persian text uses the system fonts in --font-fa.
-   To self-host Vazirmatn later: copy Vazirmatn[wght].woff2 into
-   static/fonts/, then move this @font-face block out of the comment.
-   The file stays on our own server. Never link a CDN or Google Fonts.
+/* ---- Fonts ----------------------------------------------------------------
+   Three open fonts (SIL Open Font License 1.1, licences in static/fonts/),
+   Latin letters only, from Fontsource 5.3.0. The files stay on our own
+   server. Never link a CDN or Google Fonts: the venue has no internet.
+   Geist: the interface. Geist Mono: figures. Instrument Serif: the h1 only. */
+@font-face {
+  font-family: "Geist";
+  src: url("../fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("../fonts/InstrumentSerif-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Persian text uses the system fonts in --font-fa for now. To self-host
+   Vazirmatn later: copy Vazirmatn[wght].woff2 into static/fonts/, then move
+   this @font-face block out of the comment.
 
 @font-face {
   font-family: "Vazirmatn";
@@ -42,26 +68,28 @@
 /* Colour, dark values. Dark is the default: radiologists read in dark rooms.
    The same block also applies to .frame, so the image frame stays dark in
    every theme (a light surround changes how the greys of an image look).
-   Contrast on --ground / --surface: ink 15.4 / 14.0, soft 5.8 / 5.3,
-   accent 7.0 / 6.3, stop 5.7 / 5.2, ai 7.0 / 6.4. */
+   Lightbox palette: warm charcoal, bone ink, signal orange (you), cobalt (AI).
+   Contrast on --ground / --surface: ink 16.0 / 14.8, soft 6.7 / 6.2,
+   accent 7.9 / 7.5, stop 6.5 / 6.1, ai 6.6 / 6.2.
+   Accents stay under 80% saturation so they sit in the page, not on it. */
 :root,
 .frame {
   color-scheme: dark;
 
-  --ground:      #070a0d;  /* the page */
-  --surface:     #101720;  /* header, footer, cards, tables */
-  --raised:      #18212b;  /* inputs, notices, answer choices */
-  --ink:         #dbe4ec;  /* main text */
-  --soft:        #7f8d9c;  /* secondary text */
-  --rule:        #212b36;  /* thin decorative lines: table rows, card edges */
-  --line-strong: #62707f;  /* edges people must see: inputs, buttons (3.2:1 or more) */
-  --accent:      #4aa89b;  /* the one accent: links, primary button, focus ring */
-  --accent-ink:  #04120f;  /* text on the accent */
-  --ok:          #62ab83;  /* state: done, saved */
-  --warn:        #cba43a;  /* state: needs attention, not measured yet */
-  --stop:        #d8685d;  /* state: refused, error */
+  --ground:      #0e0d0c;  /* the page: warm charcoal */
+  --surface:     #181614;  /* header, footer, cards, tables */
+  --raised:      #221f1c;  /* inputs, notices, answer choices */
+  --ink:         #efe8dc;  /* main text: bone */
+  --soft:        #a0968a;  /* secondary text */
+  --rule:        #2c2824;  /* thin decorative lines: table rows, card edges */
+  --line-strong: #766d63;  /* edges people must see: inputs, buttons (3.5:1 or more) */
+  --accent:      #eb905c;  /* the one accent: signal orange */
+  --accent-ink:  #1a0a02;  /* text on the accent */
+  --ok:          #6cc08a;  /* state: done, saved */
+  --warn:        #e5b93c;  /* state: needs attention, not measured yet */
+  --stop:        #ff5c7a;  /* state: refused, error */
   --you:         var(--accent);  /* the reader's own marks and answers */
-  --ai:          #a98bdb;  /* AI suggestions: one neutral violet, for every suggestion */
+  --ai:          #7893ed;  /* AI suggestions: one cobalt, for every suggestion */
   --viewport:    #000;     /* behind medical images, in every theme */
 }
 
@@ -71,14 +99,18 @@
   --tap:       2.75rem;  /* 44px: the least height of anything a finger taps */
   --gutter:    1rem;     /* 16px side margin on a phone */
   --page-max:  60rem;    /* 960px: the widest content column */
-  --radius:    6px;      /* the one corner radius (images get none) */
+  --radius:    6px;      /* controls: buttons, inputs, choices, badges (images get none) */
+  --radius-lg: 10px;     /* containers: panels, notices, cards (softer than what sits inside) */
+  --ease:      cubic-bezier(.2, .8, .2, 1);
   --tracking:  .08em;    /* letter spacing of small uppercase labels; 0 in Persian */
 
-  --font-text:    "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
-                  Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
-                  Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
-  --font-mono:    "Cascadia Mono", Consolas, ui-monospace, "SF Mono", Menlo,
+  /* Geist for the interface, Instrument Serif for the page title only,
+     Geist Mono for every figure. The font files are served by our own
+     server (static/fonts/), never by Google: the site runs offline. */
+  --font-text:    "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+                  "Noto Sans", "Helvetica Neue", sans-serif;
+  --font-display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-mono:    "Geist Mono", "Cascadia Mono", Consolas, ui-monospace, "SF Mono", Menlo,
                   "Roboto Mono", "Noto Sans Mono", monospace;
   --font-fa:      "Vazirmatn", Tahoma, "Segoe UI", "Noto Sans Arabic", "Geeza Pro",
                   sans-serif;
@@ -91,42 +123,42 @@
 
 /* Light: for a desk in daylight. It follows the device setting unless
    <html> says data-theme="dark". The two light blocks must stay identical.
-   Contrast on --ground / --surface: ink 15.5 / 17.6, soft 5.3 / 6.0,
-   accent 5.6 / 6.3, warn 5.0 / 5.6, ai 5.6 / 6.4. */
+   Contrast on --ground / --surface: ink 15.6 / 17.9, soft 5.6 / 6.5,
+   accent 4.9 / 5.6, warn 5.6 / 6.4, ai 5.9 / 6.8. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
-    --ground:      #eef1f3;
+    --ground:      #f3efe8;
     --surface:     #ffffff;
-    --raised:      #f4f6f7;
-    --ink:         #121a20;
-    --soft:        #566571;
-    --rule:        #ccd4d9;
-    --line-strong: #758390;
-    --accent:      #1f6b60;
+    --raised:      #f8f5f0;
+    --ink:         #1a1714;
+    --soft:        #665d53;
+    --rule:        #ddd5c9;
+    --line-strong: #857a6f;
+    --accent:      #ac4815;
     --accent-ink:  #ffffff;
     --ok:          #2f6b46;
-    --warn:        #86611a;
-    --stop:        #99332b;
-    --ai:          #6b4ea8;
+    --warn:        #825600;
+    --stop:        #b0133b;
+    --ai:          #3150c8;
   }
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --ground:      #eef1f3;
+  --ground:      #f3efe8;
   --surface:     #ffffff;
-  --raised:      #f4f6f7;
-  --ink:         #121a20;
-  --soft:        #566571;
-  --rule:        #ccd4d9;
-  --line-strong: #758390;
-  --accent:      #1f6b60;
+  --raised:      #f8f5f0;
+  --ink:         #1a1714;
+  --soft:        #665d53;
+  --rule:        #ddd5c9;
+  --line-strong: #857a6f;
+  --accent:      #ac4815;
   --accent-ink:  #ffffff;
   --ok:          #2f6b46;
-  --warn:        #86611a;
-  --stop:        #99332b;
-  --ai:          #6b4ea8;
+  --warn:        #825600;
+  --stop:        #b0133b;
+  --ai:          #3150c8;
 }
 
 /* Projector: for the congress hall. A projector washes out dark greys, so
@@ -136,18 +168,18 @@
   color-scheme: light;
   --base-size:   125%;
   --ground:      #ffffff;
-  --surface:     #eef1f3;
-  --raised:      #f6f8f9;
-  --ink:         #05080a;
-  --soft:        #2e3a44;
-  --rule:        #77838d;
-  --line-strong: #3e4b56;
-  --accent:      #0c564d;
+  --surface:     #f3efe8;
+  --raised:      #faf8f4;
+  --ink:         #0a0908;
+  --soft:        #38322c;
+  --rule:        #8a8076;
+  --line-strong: #4a433c;
+  --accent:      #7c310e;
   --accent-ink:  #ffffff;
   --ok:          #17532e;
-  --warn:        #5e4100;
-  --stop:        #8a1d14;
-  --ai:          #51308f;
+  --warn:        #5a3c00;
+  --stop:        #8a0c2b;
+  --ai:          #23399a;
 }
 
 
@@ -301,14 +333,22 @@ a {
    ========================================================================== */
 
 h1, h2, h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   line-height: 1.25;
   text-wrap: balance;
 }
-/* Headings are light, not bold. The data is what should be loud. */
-h1 { font-size: 1.6rem; font-weight: 300; }
-h2 { font-size: 1.25rem; font-weight: 400; }
-h3 { font-size: 1.0625rem; font-weight: 600; font-family: var(--font-text); }
+/* One serif title per page, tight and large; everything under it is the
+   interface face, medium weight. The data is what should be loud. */
+h1 {
+  font-family: var(--font-display);
+  font-size: 2.125rem;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -.015em;
+}
+h2 { font-size: 1.125rem; font-weight: 500; letter-spacing: -.01em; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { text-wrap: pretty; }
 
 p, .lede { max-inline-size: 65ch; }  /* a comfortable line length */
 .lede { font-size: 1.125rem; }
@@ -337,21 +377,30 @@ small { font-size: .875rem; }
    words say the state too: colour is never the only sign.
    ========================================================================== */
 
+/* A quiet tinted box with a leading icon; no coloured side stripe. The tint
+   carries the state, the icon and the words say it. */
 .notice {
+  --tone: var(--line-strong);
+  display: flex;
+  align-items: flex-start;
+  gap: .625rem;
   max-inline-size: 65ch;
   padding-block: .75rem;
-  padding-inline: 1rem;
-  background: var(--raised);
+  padding-inline: .875rem 1rem;
+  background: var(--raised);  /* browsers before 2023 have no color-mix */
+  background: color-mix(in srgb, var(--tone) 9%, var(--surface));
   color: var(--ink);
   border: 1px solid var(--rule);
-  border-inline-start: 3px solid var(--line-strong);
-  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent);
+  border-radius: var(--radius-lg);
+  font-size: .9375rem;
 }
-.notice > * + * { margin-block-start: .5rem; }
-.notice-info { border-inline-start-color: var(--accent); }
-.notice-ok   { border-inline-start-color: var(--ok); }
-.notice-warn { border-inline-start-color: var(--warn); }
-.notice-stop { border-inline-start-color: var(--stop); }
+.notice > svg { flex: none; margin-block-start: .1875rem; color: var(--tone); }
+.notice > * + * { margin-block-start: 0; }
+.notice-info { --tone: var(--accent); }
+.notice-ok   { --tone: var(--ok); }
+.notice-warn { --tone: var(--warn); }
+.notice-stop { --tone: var(--stop); }
 
 
 /* ==========================================================================
@@ -372,13 +421,17 @@ small { font-size: .875rem; }
   border-radius: var(--radius);
   background: transparent;
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 550;
+  letter-spacing: -.005em;
   line-height: 1.2;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
   touch-action: manipulation;  /* no double-tap zoom delay */
+  transition: background-color .18s var(--ease), border-color .18s var(--ease),
+              transform .12s var(--ease);
 }
+.btn:not(:disabled, [aria-disabled="true"]):active { transform: translateY(1px) scale(.99); }
 
 .btn-primary {
   background: var(--accent);
@@ -416,7 +469,12 @@ small { font-size: .875rem; }
   .site-nav a:hover,
   .site-nav button:hover { color: var(--ink); }
   .btn:not(:disabled, [aria-disabled="true"]):hover { border-color: var(--accent); }
-  .btn-primary:not(:disabled, [aria-disabled="true"]):hover { border-color: var(--ink); }
+  .btn-primary:not(:disabled, [aria-disabled="true"]):hover {
+    border-color: var(--ink);
+    border-color: color-mix(in srgb, var(--accent) 88%, var(--ink));
+    background: color-mix(in srgb, var(--accent) 88%, var(--ink));
+  }
+  .choice:not(:has(input:disabled)):hover { border-color: var(--soft); }
   .btn-quiet:not(:disabled, [aria-disabled="true"]):hover {
     border-color: transparent;
     text-decoration: underline;
@@ -471,20 +529,23 @@ small { font-size: .875rem; }
    PILLS AND THE AI BADGE
    ========================================================================== */
 
-/* A bordered state word. Always carries text. */
+/* A state word with a small leading dot. Sentence case, mono. Always carries text. */
 .pill {
   display: inline-flex;
   align-items: center;
-  padding-block: .125rem;
-  padding-inline: .5rem;
-  border: 1px solid currentColor;
-  border-radius: var(--radius);
+  gap: .375rem;
   color: var(--soft);
+  font-family: var(--font-mono);
   font-size: .75rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking);
-  text-transform: uppercase;
+  font-weight: 500;
   white-space: nowrap;
+}
+.pill::before {
+  content: "";
+  width: .375rem;
+  height: .375rem;
+  border-radius: 50%;
+  background: currentColor;
 }
 .pill-ok   { color: var(--ok); }
 .pill-warn { color: var(--warn); }
@@ -497,15 +558,15 @@ small { font-size: .875rem; }
   display: inline-flex;
   align-items: center;
   gap: .375rem;
-  padding-block: .125rem;
+  padding-block: .1875rem;
   padding-inline: .5rem;
   border: 1px dashed currentColor;
   border-radius: var(--radius);
   color: var(--ai);
+  font-family: var(--font-mono);
   font-size: .75rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking);
-  text-transform: uppercase;
+  font-weight: 500;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
@@ -595,7 +656,8 @@ fieldset {
 }
 
 label,
-legend { font-weight: 600; }
+legend { font-weight: 500; }
+legend { color: var(--soft); font-size: .875rem; }
 
 label {
   display: block;
@@ -685,7 +747,10 @@ input[type="file"] { max-inline-size: 100%; }
   border-radius: var(--radius);
   font-weight: 400;
   cursor: pointer;
+  transition: border-color .18s var(--ease), background-color .18s var(--ease),
+              transform .12s var(--ease);
 }
+.choice:not(:has(input:disabled)):active { transform: scale(.985); }
 
 .choice input {
   flex: none;
@@ -698,6 +763,8 @@ input[type="file"] { max-inline-size: 100%; }
 .choice:has(input:checked) {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--raised);
+  background: color-mix(in srgb, var(--accent) 10%, var(--raised));
 }
 
 .choice:has(input:disabled) {
@@ -714,6 +781,7 @@ input[type="file"] { max-inline-size: 100%; }
   gap: .25rem;
   padding-inline: .25rem;
   text-align: center;
+  font-family: var(--font-mono);
 }
 
 
@@ -814,8 +882,8 @@ input[type="file"] { max-inline-size: 100%; }
   border: 0;
 }
 
-/* The style has no animation. If the device asks for reduced motion, any
-   motion added later (for example by the reading screen) stops too. */
+/* The only motion is short colour and press changes on buttons and choices.
+   If the device asks for reduced motion, all of it stops. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -904,12 +972,50 @@ input[type="file"] { max-inline-size: 100%; }
    Never add a variant. */
 .ai-panel {
   max-inline-size: 65ch;
-  padding-block: .75rem;
+  padding-block: 1rem;
   padding-inline: 1rem;
   background: var(--raised);
+  background: color-mix(in srgb, var(--ai) 6%, var(--surface));
   border: 1px dashed var(--ai);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
+
+/* The AI's answer and its score on one line. The score stays at text size,
+   the same for every suggestion: a loud score pulls the reader toward the AI
+   (CLAUDE.md rule 6). */
+.ai-verdict {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.ai-verdict strong { font-size: 1.0625rem; font-weight: 600; }
+.ai-score {
+  color: var(--ai);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+
+/* Where the reader is in the study: "07 / 24" and a hairline of progress. */
+.case-progress {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: var(--soft);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: .8125rem;
+}
+.case-progress b { color: var(--ink); font-weight: 500; }
+.case-progress .track {
+  flex: 1;
+  height: 2px;
+  background: var(--rule);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.case-progress .track > span { display: block; height: 100%; background: var(--accent); }
 
 
 /* ==========================================================================
