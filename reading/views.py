@@ -1,36 +1,17 @@
-from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from . import flow
-from .demo import make_phantom
 from .forms import SignUpForm
 from .models import Enrollment, Study
 
 
 def home(request):
     return render(request, "reading/home.html")
-
-
-def demo_image(request):
-    """Serve the synthetic test image on the home page. It is drawn on first use.
-
-    Only the pixels are sent: no file name, no file date, nothing that could hint at the
-    source or the answer.
-    """
-    path = settings.CASE_MEDIA_ROOT / "demo" / "phantom-v3.png"
-    if not path.exists():
-        make_phantom(path)
-    return HttpResponse(
-        path.read_bytes(),
-        content_type="image/png",
-        headers={"Cache-Control": "private, max-age=300"},
-    )
 
 
 def sign_up(request):

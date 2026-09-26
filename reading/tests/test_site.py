@@ -2,13 +2,11 @@ import os
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from PIL import Image
 
 from reading.models import User
 
@@ -59,35 +57,6 @@ class SecurityHeaderTests(TestCase):
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response.headers["Referrer-Policy"], "same-origin")
-
-
-class DemoImageTests(TestCase):
-    def setUp(self):
-        self.media_dir = Path(tempfile.mkdtemp())
-        self.override = override_settings(CASE_MEDIA_ROOT=self.media_dir)
-        self.override.enable()
-
-    def tearDown(self):
-        self.override.disable()
-
-    def test_demo_image_is_drawn_on_first_use_and_served_privately(self):
-        response = self.client.get(reverse("demo_image"))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers["Content-Type"], "image/png")
-        self.assertIn("private", response.headers["Cache-Control"])
-
-        with Image.open(self.media_dir / "demo" / "phantom-v3.png") as image:
-            self.assertEqual(image.mode, "L")  # 8-bit greyscale: pixels only, no DICOM
-            self.assertEqual(image.size, (1024, 1280))
-
-    def test_image_response_carries_no_file_name(self):
-        response = self.client.get(reverse("demo_image"))
-        self.assertNotIn("Content-Disposition", response.headers)
-
-    def test_case_images_are_not_public_static_files(self):
-        self.client.get(reverse("demo_image"))
-        self.assertIsNone(finders.find("demo/phantom-v3.png"))
-        self.assertEqual(self.client.get("/static/demo/phantom-v3.png").status_code, 404)
 
 
 class VenueAdminGuardTests(TestCase):

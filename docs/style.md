@@ -93,6 +93,8 @@ A **theme** is a set of token values. A theme changes values only, never a compo
 - Forms: labels, inputs, selects, text areas. `.choice-list` with `.choice` turns radio
   buttons and checkboxes into large tap targets. Add `.choice-row` for a 1–5 scale.
 - `.frame` (image viewport), `.badge-ai` (AI label), `.visually-hidden` (for screen readers only).
+- `.landing-hero`, `.landing-section`, `.landing-facts`, `.landing-steps`: the home page only.
+  It is text only: no picture, so nothing on it can look like a scan.
 
 ## Persian and right-to-left
 

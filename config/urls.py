@@ -6,7 +6,6 @@ from reading import api, views
 
 urlpatterns = [
     path("", views.home, name="home"),
-    path("m/demo/", views.demo_image, name="demo_image"),
     # Accounts
     path("accounts/signup/", views.sign_up, name="signup"),
     path("accounts/signin/", auth_views.LoginView.as_view(template_name="accounts/signin.html"), name="signin"),
