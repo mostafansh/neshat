@@ -1,17 +1,55 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="visually-hidden">{{ site_name }}</h1>  {# no visible headline for now; screen readers still get one #}
-
-<div class="btn-row">
-  <a class="btn btn-primary" href="{% url 'projects' %}">See the projects</a>
-  {% if not user.is_authenticated %}<a class="btn" href="{% url 'signup' %}">Create an account</a>{% endif %}
-</div>
-
-<figure class="stack">
-  <div class="frame">
-    <img src="{% url 'demo_image' %}" alt="Synthetic test radiograph, drawn by code. Not a patient.">
+<section class="landing-hero stack">
+  <h1>Read cases for imaging research.</h1>
+  <p class="lede">Join research projects that curate imaging datasets. Read the cases in your
+  browser, on a phone or a computer.</p>
+  <div class="btn-row">
+    {% if user.is_authenticated %}
+      <a class="btn btn-primary" href="{% url 'projects' %}">Go to the projects</a>
+    {% else %}
+      <a class="btn btn-primary" href="{% url 'signup' %}">Create an account</a>
+      <a class="btn" href="{% url 'projects' %}">See the projects</a>
+    {% endif %}
   </div>
-  <figcaption class="muted">A synthetic test image, drawn by code. Not a patient.</figcaption>
-</figure>
+  {% if not user.is_authenticated %}<p class="muted">An account needs only a user name and a password.</p>{% endif %}
+</section>
+
+<section class="landing-section">
+  <h2>Good to know</h2>
+  <ul class="landing-facts" role="list">
+    <li>
+      <h3>About a minute per case</h3>
+      <p class="muted">Each project page says how many cases it has.</p>
+    </li>
+    <li>
+      <h3>Pixels only</h3>
+      <p class="muted">Images come without names, ID numbers or scan headers.</p>
+    </li>
+    <li>
+      <h3>Research only</h3>
+      <p class="muted">Your answers and their timing are recorded for the study. Not for clinical use.</p>
+    </li>
+  </ul>
+</section>
+
+<section class="landing-section">
+  <h2>How it works</h2>
+  <ol class="landing-steps" role="list">
+    <li>
+      <h3>Choose a project</h3>
+      <p class="muted">Read its page, then agree to take part.</p>
+    </li>
+    <li>
+      <h3>Read each case</h3>
+      <p class="muted">Answer the project's question and say how sure you are. Then lock your answer.
+      After that you may see a suggestion, and you may keep or change your answer.</p>
+    </li>
+    <li>
+      <h3>Finish the project</h3>
+      <p class="muted">Some details of the project are explained at its end.</p>
+    </li>
+  </ol>
+</section>
 {% endblock %}

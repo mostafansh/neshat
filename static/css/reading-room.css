@@ -1018,3 +1018,78 @@ input[type="file"] { max-inline-size: 100%; }
   border: 1px dashed var(--ai);
   border-radius: var(--radius);
 }
+
+
+/* ==========================================================================
+   LANDING PAGE (templates/reading/home.html): text only, no picture.
+   ========================================================================== */
+
+/* The opening: headline, lede, buttons. The headline breaks into two calm
+   lines. On a phone each button fills its own row; on a wide screen the two
+   sit side by side. */
+.landing-hero h1 {
+  max-inline-size: 18ch;
+  font-size: 2rem;
+  line-height: 1.15;
+}
+.landing-hero > h1 + .lede { margin-block-start: 1rem; }  /* room under the large headline */
+.landing-hero .lede { text-wrap: balance; }  /* no single word alone on a line */
+.landing-hero > .btn-row {
+  max-inline-size: 24rem;
+  margin-block-start: 1.5rem;
+}
+.landing-hero .btn { flex: 1 1 11rem; }
+
+/* "Good to know" and "How it works": a thin line above each part. */
+.site-main > .landing-section {
+  margin-block-start: 2.5rem;
+  padding-block-start: 1.5rem;
+  border-block-start: 1px solid var(--rule);
+}
+.landing-section > h2 + * { margin-block-start: 1.25rem; }
+
+.landing-steps,
+.landing-facts {
+  display: grid;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.landing-steps > li > * + *,
+.landing-facts > li > * + * { margin-block-start: .25rem; }
+
+/* Facts: one column on a phone, three on a wide screen. */
+.landing-facts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+
+/* Steps: the number (01, 02, 03) in the start column, the text beside it. */
+.landing-steps {
+  max-inline-size: 40rem;
+  counter-reset: step;
+}
+.landing-steps > li {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: baseline;
+  counter-increment: step;
+}
+.landing-steps > li::before {
+  content: counter(step, decimal-leading-zero);
+  color: var(--soft);
+  font-family: var(--font-mono);
+}
+.landing-steps > li > * { grid-column: 2; }
+
+/* Wide screen: a larger headline, and each part's heading sits in a narrow
+   start column, like a margin note. */
+@media (min-width: 48rem) {
+  .landing-hero { padding-block-start: 2rem; }
+  .landing-hero h1 { font-size: 2.75rem; }
+  .landing-section {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+  .landing-section > h2 + * { margin-block-start: 0; }
+}
