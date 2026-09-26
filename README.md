@@ -1,4 +1,4 @@
-# [Product name]
+# AutoClave
 
 A web site where radiologists join dataset-curation research projects.
 

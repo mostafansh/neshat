@@ -32,7 +32,7 @@ exercises, attendees can sign up to join the pilot.
 ## Open decisions
 
 1. Repository name on GitHub.
-2. Product name (placeholder: [Product name]).
+2. Product name: decided 2026-09-26, **AutoClave**.
 3. The server: which provider, and when it is ready. The first online deploy should happen by
    mid-October at the latest, so the 3-radiologist checkpoint can run online.
 
